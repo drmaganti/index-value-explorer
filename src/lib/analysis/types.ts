@@ -1,0 +1,74 @@
+/**
+ * Domain types for the Index Value Agent analysis flow.
+ *
+ * These shapes are designed so that swapping mock execution for a real
+ * backend requires only replacing the runner — nothing in the UI changes.
+ */
+
+export const SUPPORTED_SYMBOLS = ["QQQ", "SPY", "DIA"] as const;
+export type SupportedSymbol = (typeof SUPPORTED_SYMBOLS)[number];
+
+export type AnalysisMode = "conservative" | "balanced" | "opportunistic";
+
+export interface AnalysisSettings {
+  minMarketCapB: number;            // billions USD
+  minPullbackPct: number;           // e.g. 8 means ≥ 8% off 52-wk high
+  maxPullbackPct: number;           // e.g. 35
+  minOperatingMarginPct: number;    // e.g. 10
+  allowNegativeFcf: boolean;
+  requireAbove200dma: boolean;
+  topN: number;                     // 5..25
+  mode: AnalysisMode;
+}
+
+export interface AnalysisRequest {
+  symbol: string;                   // already normalized (uppercased, trimmed)
+  settings: AnalysisSettings;
+}
+
+export type AnalysisStepId =
+  | "fetch_constituents"
+  | "gather_fundamentals"
+  | "apply_filters"
+  | "rank_candidates"
+  | "build_report";
+
+export type StepStatus = "pending" | "active" | "done" | "error";
+
+export interface AnalysisStep {
+  id: AnalysisStepId;
+  label: string;
+  detail: string;
+  status: StepStatus;
+}
+
+export interface RankedCandidate {
+  rank: number;
+  ticker: string;
+  name: string;
+  sector: string;
+  pullbackPct: number;              // negative number, e.g. -21.4
+  score: number;                    // 0..100
+}
+
+export interface RejectedCandidate {
+  ticker: string;
+  reason: string;
+}
+
+export interface AnalysisSummary {
+  constituentsScanned: number;
+  candidatesOnPullback: number;
+  topCount: number;
+}
+
+export interface AnalysisReport {
+  id: string;
+  request: AnalysisRequest;
+  generatedAt: string;              // ISO timestamp
+  summary: AnalysisSummary;
+  ranked: RankedCandidate[];
+  rejected: RejectedCandidate[];
+}
+
+export type AnalysisStatus = "idle" | "running" | "success" | "error";
