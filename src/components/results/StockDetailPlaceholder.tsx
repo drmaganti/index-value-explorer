@@ -1,7 +1,7 @@
-import type { RankedRow } from "./RankedTablePlaceholder";
+import type { RankedCandidate } from "@/lib/analysis/types";
 
 interface Props {
-  stock?: RankedRow;
+  stock?: RankedCandidate;
 }
 
 export function StockDetailPlaceholder({ stock }: Props) {
@@ -21,7 +21,7 @@ export function StockDetailPlaceholder({ stock }: Props) {
     { label: "Op. margin", value: "33%" },
     { label: "Rev. growth (3y)", value: "+12%" },
     { label: "Net cash", value: "$8.2B" },
-    { label: "From 52-wk high", value: stock.pullback },
+    { label: "From 52-wk high", value: `${stock.pullbackPct.toFixed(1)}%` },
     { label: "Quality score", value: "A−" },
   ];
 
@@ -29,7 +29,9 @@ export function StockDetailPlaceholder({ stock }: Props) {
     <div className="rounded-xl border border-border bg-surface-elevated p-6 shadow-soft">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-mono text-xs text-muted-foreground">#{stock.rank.toString().padStart(2, "0")} · {stock.sector}</p>
+          <p className="font-mono text-xs text-muted-foreground">
+            #{stock.rank.toString().padStart(2, "0")} · {stock.sector}
+          </p>
           <p className="mt-1 font-mono text-2xl font-semibold tracking-tight">{stock.ticker}</p>
           <p className="text-sm text-muted-foreground">{stock.name}</p>
         </div>

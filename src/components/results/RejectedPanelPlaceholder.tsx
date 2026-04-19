@@ -1,14 +1,11 @@
 import { XCircle } from "lucide-react";
+import type { RejectedCandidate } from "@/lib/analysis/types";
 
-const rejected = [
-  { ticker: "TSLA", reason: "Valuation premium too high" },
-  { ticker: "NFLX", reason: "Insufficient pullback" },
-  { ticker: "MRNA", reason: "Earnings instability" },
-  { ticker: "PYPL", reason: "Quality score below threshold" },
-  { ticker: "WBD", reason: "Balance sheet leverage" },
-];
+interface Props {
+  rows: RejectedCandidate[];
+}
 
-export function RejectedPanelPlaceholder() {
+export function RejectedPanelPlaceholder({ rows }: Props) {
   return (
     <div className="rounded-xl border border-border bg-surface-elevated p-6 shadow-soft">
       <div className="flex items-center justify-between">
@@ -19,11 +16,11 @@ export function RejectedPanelPlaceholder() {
           </p>
         </div>
         <span className="rounded-full bg-muted px-2.5 py-1 font-mono text-xs text-muted-foreground">
-          {rejected.length}
+          {rows.length}
         </span>
       </div>
       <ul className="mt-4 divide-y divide-border">
-        {rejected.map((r) => (
+        {rows.map((r) => (
           <li key={r.ticker} className="flex items-center justify-between py-2.5 text-sm">
             <span className="flex items-center gap-2.5">
               <XCircle className="h-4 w-4 text-muted-foreground" />
