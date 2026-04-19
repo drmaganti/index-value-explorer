@@ -1,11 +1,42 @@
 import { useState } from "react";
-import { ChevronDown, Settings2 } from "lucide-react";
+import { ChevronDown, Settings2, Sparkles } from "lucide-react";
+import type { AnalysisSettings } from "@/lib/analysis/types";
+import { MODE_PRESETS } from "@/lib/analysis/defaults";
+import type { FieldErrors } from "@/lib/analysis/validation";
+import { NumberField, Segmented, Toggle } from "@/components/common/FormPrimitives";
 
-export function AdvancedSettingsAccordion() {
+interface Props {
+  settings: AnalysisSettings;
+  onChange: (next: AnalysisSettings) => void;
+  errors: FieldErrors;
+  disabled?: boolean;
+}
+
+const MODE_OPTIONS = [
+  { value: "conservative", label: "Conservative", description: "Strict quality, smaller pullbacks." },
+  { value: "balanced", label: "Balanced", description: "Default screen — moderate filters." },
+  { value: "opportunistic", label: "Opportunistic", description: "Wider net, deeper pullbacks." },
+] as const;
+
+export function AdvancedSettingsAccordion({ settings, onChange, errors, disabled }: Props) {
   const [open, setOpen] = useState(false);
 
+  const update = <K extends keyof AnalysisSettings>(key: K, value: AnalysisSettings[K]) => {
+    onChange({ ...settings, [key]: value });
+  };
+
+  const applyMode = (mode: AnalysisSettings["mode"]) => {
+    onChange({ ...settings, ...MODE_PRESETS[mode], mode });
+  };
+
+  const hasErrors = Object.keys(errors).some((k) => k !== "symbol");
+
   return (
-    <div className="rounded-lg border border-border bg-surface">
+    <div
+      className={`rounded-lg border bg-surface ${
+        hasErrors ? "border-destructive/40" : "border-border"
+      }`}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -15,34 +46,118 @@ export function AdvancedSettingsAccordion() {
           <Settings2 className="h-4 w-4 text-muted-foreground" />
           Advanced settings
           <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-            optional
+            {settings.mode}
           </span>
+          {hasErrors && (
+            <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-destructive">
+              fix issues
+            </span>
+          )}
         </span>
         <ChevronDown
           className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
-      {open && (
-        <div className="grid gap-4 border-t border-border px-4 py-4 sm:grid-cols-2">
-          <Setting label="Min market cap" value="$50B" hint="Large-cap floor" />
-          <Setting label="Pullback window" value="6 months" hint="Lookback for drawdown" />
-          <Setting label="Min pullback" value="−15%" hint="From 52-week high" />
-          <Setting label="Investment horizon" value="2+ years" hint="Sets ranking weights" />
-          <p className="text-xs text-muted-foreground sm:col-span-2">
-            These controls are placeholders for now. Full configuration is coming soon.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
 
-function Setting({ label, value, hint }: { label: string; value: string; hint: string }) {
-  return (
-    <div className="rounded-md border border-border bg-surface-elevated px-3 py-2.5">
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-0.5 font-mono text-sm font-medium">{value}</p>
-      <p className="text-[11px] text-muted-foreground">{hint}</p>
+      {open && (
+        <fieldset
+          disabled={disabled}
+          className="space-y-5 border-t border-border p-4 disabled:opacity-60"
+        >
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <Sparkles className="h-3 w-3" />
+              Mode
+            </p>
+            <Segmented
+              ariaLabel="Analysis mode"
+              value={settings.mode}
+              onChange={applyMode}
+              options={MODE_OPTIONS}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <NumberField
+              id="minMarketCap"
+              label="Min market cap"
+              suffix="B USD"
+              value={settings.minMarketCapB}
+              onChange={(v) => update("minMarketCapB", v)}
+              hint="Excludes smaller, less liquid names."
+              error={errors.minMarketCapB}
+              min={1}
+              step={1}
+            />
+            <NumberField
+              id="topN"
+              label="Top results"
+              suffix="stocks"
+              value={settings.topN}
+              onChange={(v) => update("topN", Math.round(v))}
+              hint="Between 3 and 25."
+              error={errors.topN}
+              min={3}
+              max={25}
+              step={1}
+            />
+            <NumberField
+              id="minPullback"
+              label="Min pullback"
+              suffix="%"
+              value={settings.minPullbackPct}
+              onChange={(v) => update("minPullbackPct", v)}
+              hint="From recent 52-wk high."
+              error={errors.minPullbackPct}
+              min={0}
+              max={90}
+              step={1}
+            />
+            <NumberField
+              id="maxPullback"
+              label="Max pullback"
+              suffix="%"
+              value={settings.maxPullbackPct}
+              onChange={(v) => update("maxPullbackPct", v)}
+              hint="Excludes potential broken trends."
+              error={errors.maxPullbackPct}
+              min={1}
+              max={95}
+              step={1}
+            />
+            <NumberField
+              id="minOpMargin"
+              label="Min operating margin"
+              suffix="%"
+              value={settings.minOperatingMarginPct}
+              onChange={(v) => update("minOperatingMarginPct", v)}
+              hint="Quality floor."
+              error={errors.minOperatingMarginPct}
+              min={-50}
+              max={80}
+              step={1}
+            />
+            <div /> {/* layout spacer on sm+ */}
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Toggle
+              id="allowNegFcf"
+              label="Allow negative free cash flow"
+              description="Otherwise FCF-negative names are screened out."
+              checked={settings.allowNegativeFcf}
+              onChange={(v) => update("allowNegativeFcf", v)}
+            />
+            <Toggle
+              id="above200dma"
+              label="Require above 200-day MA"
+              description="Bias toward names still in long-term uptrend."
+              checked={settings.requireAbove200dma}
+              onChange={(v) => update("requireAbove200dma", v)}
+            />
+          </div>
+        </fieldset>
+      )}
     </div>
   );
 }
