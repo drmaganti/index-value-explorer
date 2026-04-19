@@ -3,18 +3,29 @@ import type {
   AnalysisRequest,
   AnalysisStep,
   AnalysisStepId,
-  RankedCandidate,
-  RejectedCandidate,
 } from "./types";
 import { INITIAL_STEPS } from "./defaults";
+import {
+  buildReportFromEngine,
+  constituentsToTickers,
+  DEFAULT_SCORING_WEIGHTS,
+  mockFundamentalsProvider,
+  mockIndexProvider,
+  runScoringEngine,
+  type FilterConfig,
+  type FundamentalsProvider,
+  type IndexProvider,
+  type ScoringConfig,
+} from "@/services";
 
 /**
- * Mock analysis runner.
+ * Orchestration layer.
  *
- * Walks through the configured steps with realistic-feeling timing,
- * emitting the full step array on every transition. The final
- * `onComplete` payload mirrors the shape we'd expect from a real
- * backend so swapping in a real engine later is a one-file change.
+ * Wires the UI's AnalysisRequest -> services pipeline -> AnalysisReport,
+ * walking through the visible step states with realistic-feeling timing.
+ *
+ * Providers are injectable so tests / future real backends can replace
+ * the mock implementations without touching this file.
  */
 
 const STEP_DURATIONS_MS: Record<AnalysisStepId, number> = {
@@ -35,37 +46,90 @@ export interface RunCallbacks {
   onError: (message: string, steps: AnalysisStep[]) => void;
 }
 
+export interface RunDeps {
+  indexProvider?: IndexProvider;
+  fundamentalsProvider?: FundamentalsProvider;
+}
+
 export function runMockAnalysis(
   request: AnalysisRequest,
   callbacks: RunCallbacks,
+  deps: RunDeps = {},
 ): RunHandle {
+  const indexProvider = deps.indexProvider ?? mockIndexProvider;
+  const fundamentalsProvider =
+    deps.fundamentalsProvider ?? mockFundamentalsProvider;
+
   let cancelled = false;
   const timeouts: ReturnType<typeof setTimeout>[] = [];
   const steps: AnalysisStep[] = INITIAL_STEPS.map((s) => ({ ...s }));
 
-  const schedule = (ms: number, fn: () => void) => {
-    const t = setTimeout(() => {
-      if (!cancelled) fn();
-    }, ms);
-    timeouts.push(t);
+  const wait = (ms: number) =>
+    new Promise<void>((resolve) => {
+      const t = setTimeout(resolve, ms);
+      timeouts.push(t);
+    });
+
+  const setStepStatus = (idx: number, status: AnalysisStep["status"]) => {
+    steps[idx] = { ...steps[idx], status };
+    callbacks.onStep([...steps]);
   };
 
-  let elapsed = 0;
-  steps.forEach((step, i) => {
-    schedule(elapsed, () => {
-      steps[i] = { ...step, status: "active" };
-      callbacks.onStep([...steps]);
-    });
-    elapsed += STEP_DURATIONS_MS[step.id];
-    schedule(elapsed, () => {
-      steps[i] = { ...step, status: "done" };
-      callbacks.onStep([...steps]);
-    });
-  });
+  const filters: FilterConfig = toFilterConfig(request);
+  const scoring: ScoringConfig = toScoringConfig(request);
 
-  schedule(elapsed + 100, () => {
-    callbacks.onComplete(buildMockReport(request));
-  });
+  void (async () => {
+    try {
+      // 1. Fetch constituents
+      setStepStatus(0, "active");
+      const constituents = await indexProvider.getConstituents(request.symbol);
+      await wait(STEP_DURATIONS_MS.fetch_constituents);
+      if (cancelled) return;
+      setStepStatus(0, "done");
+
+      // 2. Gather fundamentals
+      setStepStatus(1, "active");
+      const tickers = constituentsToTickers(constituents);
+      const metrics = await fundamentalsProvider.getMetrics(tickers);
+      await wait(STEP_DURATIONS_MS.gather_fundamentals);
+      if (cancelled) return;
+      setStepStatus(1, "done");
+
+      // 3. Apply filters (engine handles filters + scoring together,
+      //    but we present them as discrete user-facing steps).
+      setStepStatus(2, "active");
+      await wait(STEP_DURATIONS_MS.apply_filters);
+      if (cancelled) return;
+      setStepStatus(2, "done");
+
+      // 4. Rank candidates
+      setStepStatus(3, "active");
+      const engineResult = runScoringEngine({
+        constituents,
+        metrics,
+        filters,
+        scoring,
+      });
+      await wait(STEP_DURATIONS_MS.rank_candidates);
+      if (cancelled) return;
+      setStepStatus(3, "done");
+
+      // 5. Build report
+      setStepStatus(4, "active");
+      const report = buildReportFromEngine(request, engineResult);
+      await wait(STEP_DURATIONS_MS.build_report);
+      if (cancelled) return;
+      setStepStatus(4, "done");
+
+      await wait(100);
+      if (cancelled) return;
+      callbacks.onComplete(report);
+    } catch (err) {
+      if (cancelled) return;
+      const message = err instanceof Error ? err.message : "Unknown error";
+      callbacks.onError(message, [...steps]);
+    }
+  })();
 
   return {
     cancel: () => {
@@ -75,58 +139,36 @@ export function runMockAnalysis(
   };
 }
 
-/* ---------------------------------------------------------------- */
-/* Mock report builder — shape-compatible with future real backend. */
-/* ---------------------------------------------------------------- */
+/* ------------------------------------------------------------------ */
+/* Bridge: UI AnalysisRequest -> engine FilterConfig / ScoringConfig. */
+/* ------------------------------------------------------------------ */
 
-const BASE_RANKED: Omit<RankedCandidate, "rank">[] = [
-  { ticker: "ADBE", name: "Adobe Inc.", sector: "Software", pullbackPct: -21.4, score: 92 },
-  { ticker: "GOOGL", name: "Alphabet Inc.", sector: "Communication", pullbackPct: -16.8, score: 89 },
-  { ticker: "AMD", name: "Advanced Micro Devices", sector: "Semiconductors", pullbackPct: -27.1, score: 86 },
-  { ticker: "PEP", name: "PepsiCo Inc.", sector: "Consumer Staples", pullbackPct: -18.2, score: 84 },
-  { ticker: "TXN", name: "Texas Instruments", sector: "Semiconductors", pullbackPct: -15.6, score: 83 },
-  { ticker: "INTU", name: "Intuit Inc.", sector: "Software", pullbackPct: -19.0, score: 81 },
-  { ticker: "QCOM", name: "Qualcomm Inc.", sector: "Semiconductors", pullbackPct: -22.5, score: 79 },
-  { ticker: "MDLZ", name: "Mondelez International", sector: "Consumer Staples", pullbackPct: -17.3, score: 77 },
-  { ticker: "BKNG", name: "Booking Holdings", sector: "Travel", pullbackPct: -15.9, score: 76 },
-  { ticker: "AMAT", name: "Applied Materials", sector: "Semiconductors", pullbackPct: -24.1, score: 74 },
-  { ticker: "CSCO", name: "Cisco Systems", sector: "Networking", pullbackPct: -12.8, score: 72 },
-  { ticker: "AMGN", name: "Amgen Inc.", sector: "Biotech", pullbackPct: -14.2, score: 70 },
-];
-
-const BASE_REJECTED: RejectedCandidate[] = [
-  { ticker: "TSLA", reason: "Valuation premium too high" },
-  { ticker: "NFLX", reason: "Insufficient pullback" },
-  { ticker: "MRNA", reason: "Earnings instability" },
-  { ticker: "PYPL", reason: "Quality score below threshold" },
-  { ticker: "WBD", reason: "Balance-sheet leverage" },
-];
-
-function buildMockReport(request: AnalysisRequest): AnalysisReport {
-  const { settings, symbol } = request;
-
-  // Apply settings to the mock dataset so the output reflects user choices.
-  const filtered = BASE_RANKED.filter((c) => {
-    const pb = Math.abs(c.pullbackPct);
-    return pb >= settings.minPullbackPct && pb <= settings.maxPullbackPct;
-  });
-
-  const ranked: RankedCandidate[] = filtered
-    .slice(0, settings.topN)
-    .map((c, i) => ({ ...c, rank: i + 1 }));
-
-  const constituentsScanned = symbol === "SPY" ? 500 : symbol === "DIA" ? 30 : 100;
-
+function toFilterConfig(request: AnalysisRequest): FilterConfig {
+  const s = request.settings;
   return {
-    id: `mock-${Date.now()}`,
-    request,
-    generatedAt: new Date().toISOString(),
-    summary: {
-      constituentsScanned,
-      candidatesOnPullback: filtered.length + BASE_REJECTED.length,
-      topCount: ranked.length,
-    },
-    ranked,
-    rejected: BASE_REJECTED,
+    minMarketCapB: s.minMarketCapB,
+    minPullbackPct: s.minPullbackPct,
+    maxPullbackPct: s.maxPullbackPct,
+    minOperatingMarginPct: s.minOperatingMarginPct,
+    requirePositiveRevenueGrowth: true,
+    requirePositiveFcf: !s.allowNegativeFcf,
+    maxDebtToEquity: s.mode === "conservative" ? 1.5 : s.mode === "balanced" ? 2.5 : 4.0,
+    requireAbove200dma: s.requireAbove200dma,
   };
+}
+
+function toScoringConfig(request: AnalysisRequest): ScoringConfig {
+  // Mode skews the weights toward different priorities.
+  const base = { ...DEFAULT_SCORING_WEIGHTS };
+  if (request.settings.mode === "conservative") {
+    base.operatingMargin *= 1.3;
+    base.freeCashFlow *= 1.3;
+    base.debtToEquity *= 1.4;
+    base.beta *= 1.4;
+  } else if (request.settings.mode === "opportunistic") {
+    base.drawdownFromHigh *= 1.4;
+    base.revenueGrowth *= 1.2;
+    base.earningsGrowth *= 1.2;
+  }
+  return { weights: base, topN: request.settings.topN };
 }
