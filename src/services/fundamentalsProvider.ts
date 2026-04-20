@@ -21,6 +21,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
   ADBE: {
     ticker: "ADBE",
     marketCapB: 240,
+    currentPrice: 472,
+    high52Week: 601,
+    low52Week: 433,
     pricePctFrom52WHigh: -21.4,
     above200dma: true,
     forwardPE: 22, trailingPE: 30, evToEbitda: 19, priceToBook: 11,
@@ -31,6 +34,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
   GOOGL: {
     ticker: "GOOGL",
     marketCapB: 1900,
+    currentPrice: 162,
+    high52Week: 195,
+    low52Week: 131,
     pricePctFrom52WHigh: -16.8,
     above200dma: true,
     forwardPE: 19, trailingPE: 22, evToEbitda: 14, priceToBook: 6.5,
@@ -41,6 +47,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
   PEP: {
     ticker: "PEP",
     marketCapB: 230,
+    currentPrice: 167,
+    high52Week: 204,
+    low52Week: 154,
     pricePctFrom52WHigh: -18.2,
     above200dma: false,
     forwardPE: 18, trailingPE: 22, evToEbitda: 15, priceToBook: 11,
@@ -51,6 +60,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
   TXN: {
     ticker: "TXN",
     marketCapB: 165,
+    currentPrice: 178,
+    high52Week: 211,
+    low52Week: 152,
     pricePctFrom52WHigh: -15.6,
     above200dma: true,
     forwardPE: 24, trailingPE: 28, evToEbitda: 18, priceToBook: 10,
@@ -61,6 +73,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
   INTU: {
     ticker: "INTU",
     marketCapB: 175,
+    currentPrice: 601,
+    high52Week: 742,
+    low52Week: 553,
     pricePctFrom52WHigh: -19.0,
     above200dma: true,
     forwardPE: 28, trailingPE: 36, evToEbitda: 22, priceToBook: 8.5,
@@ -71,6 +86,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
   QCOM: {
     ticker: "QCOM",
     marketCapB: 180,
+    currentPrice: 168,
+    high52Week: 217,
+    low52Week: 149,
     pricePctFrom52WHigh: -22.5,
     above200dma: false,
     forwardPE: 14, trailingPE: 17, evToEbitda: 11, priceToBook: 7,
@@ -81,6 +99,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
   MDLZ: {
     ticker: "MDLZ",
     marketCapB: 95,
+    currentPrice: 67,
+    high52Week: 81,
+    low52Week: 61,
     pricePctFrom52WHigh: -17.3,
     above200dma: false,
     forwardPE: 17, trailingPE: 20, evToEbitda: 14, priceToBook: 3.5,
@@ -91,6 +112,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
   BKNG: {
     ticker: "BKNG",
     marketCapB: 130,
+    currentPrice: 3512,
+    high52Week: 4174,
+    low52Week: 3089,
     pricePctFrom52WHigh: -15.9,
     above200dma: true,
     forwardPE: 20, trailingPE: 25, evToEbitda: 16, priceToBook: 35, // P/B distorted (buybacks)
@@ -101,6 +125,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
   AMAT: {
     ticker: "AMAT",
     marketCapB: 145,
+    currentPrice: 191,
+    high52Week: 252,
+    low52Week: 171,
     pricePctFrom52WHigh: -24.1,
     above200dma: false,
     forwardPE: 16, trailingPE: 19, evToEbitda: 13, priceToBook: 8,
@@ -111,6 +138,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
   CSCO: {
     ticker: "CSCO",
     marketCapB: 200,
+    currentPrice: 50,
+    high52Week: 57,
+    low52Week: 44,
     pricePctFrom52WHigh: -12.8,        // edge: just under min pullback if 8%
     above200dma: true,
     forwardPE: 14, trailingPE: 16, evToEbitda: 11, priceToBook: 5,
@@ -121,6 +151,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
   AMGN: {
     ticker: "AMGN",
     marketCapB: 160,
+    currentPrice: 281,
+    high52Week: 328,
+    low52Week: 253,
     pricePctFrom52WHigh: -14.2,
     above200dma: true,
     forwardPE: 15, trailingPE: 18, evToEbitda: 12, priceToBook: 28,
@@ -135,6 +168,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
     // Big pullback, decent quality — should pass.
     ticker: "AMD",
     marketCapB: 230,
+    currentPrice: 151,
+    high52Week: 207,
+    low52Week: 132,
     pricePctFrom52WHigh: -27.1,
     above200dma: false,
     forwardPE: 28, trailingPE: 60, evToEbitda: 22, priceToBook: 4,
@@ -146,6 +182,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
     // Insufficient pullback — reject.
     ticker: "TSLA",
     marketCapB: 800,
+    currentPrice: 228,
+    high52Week: 241,
+    low52Week: 138,
     pricePctFrom52WHigh: -5.2,
     above200dma: true,
     forwardPE: 70, trailingPE: 90, evToEbitda: 50, priceToBook: 12,
@@ -157,6 +196,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
     // Above max pullback range AND below 200dma — reject.
     ticker: "NFLX",
     marketCapB: 270,
+    currentPrice: 641,
+    high52Week: 661,
+    low52Week: 446,
     pricePctFrom52WHigh: -3.0,
     above200dma: true,
     forwardPE: 35, trailingPE: 45, evToEbitda: 28, priceToBook: 14,
@@ -168,6 +210,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
     // Negative revenue growth + negative op margin — multi-reason reject.
     ticker: "MRNA",
     marketCapB: 30,
+    currentPrice: 93,
+    high52Week: 160,
+    low52Week: 82,
     pricePctFrom52WHigh: -42.0,
     above200dma: false,
     forwardPE: undefined, trailingPE: undefined, evToEbitda: undefined, priceToBook: 1.6,
@@ -179,6 +224,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
     // Borderline; passes filters but lower score.
     ticker: "PYPL",
     marketCapB: 70,
+    currentPrice: 63,
+    high52Week: 78,
+    low52Week: 55,
     pricePctFrom52WHigh: -19.5,
     above200dma: false,
     forwardPE: 12, trailingPE: 16, evToEbitda: 10, priceToBook: 3.5,
@@ -190,6 +238,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
     // Excessive leverage + negative growth — reject.
     ticker: "WBD",
     marketCapB: 22,
+    currentPrice: 7.9,
+    high52Week: 14.1,
+    low52Week: 6.8,
     pricePctFrom52WHigh: -38.0,
     above200dma: false,
     forwardPE: undefined, trailingPE: undefined, evToEbitda: 8, priceToBook: 0.6,
@@ -201,6 +252,9 @@ const MOCK_METRICS: Record<string, StockMetrics> = {
     // Insufficient pullback in our snapshot — reject.
     ticker: "MSFT",
     marketCapB: 3100,
+    currentPrice: 421,
+    high52Week: 441,
+    low52Week: 324,
     pricePctFrom52WHigh: -4.5,
     above200dma: true,
     forwardPE: 30, trailingPE: 35, evToEbitda: 22, priceToBook: 11,
