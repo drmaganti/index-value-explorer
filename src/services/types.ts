@@ -25,6 +25,9 @@ export interface StockMetrics {
   marketCapB?: number;        // billions USD
 
   // Price-relative
+  currentPrice?: number;
+  high52Week?: number;
+  low52Week?: number;
   pricePctFrom52WHigh?: number;   // negative number, e.g. -14.2 means 14.2% below 52-wk high
   above200dma?: boolean;
 
