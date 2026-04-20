@@ -57,7 +57,7 @@ export function StockDetailPlaceholder({ stock }: Props) {
   const missingCount = stock.missingDataCount;
 
   return (
-    <div className="rounded-xl border border-border bg-surface-elevated p-6 shadow-soft">
+    <div className="app-card p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-mono text-xs text-muted-foreground">

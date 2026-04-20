@@ -28,7 +28,7 @@ export function FeatureStrip() {
     <section className="mx-auto max-w-7xl px-6 py-16 sm:py-20">
       <div className="grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
         {features.map((f) => (
-          <div key={f.title} className="bg-surface-elevated p-6">
+          <div key={f.title} className="bg-surface-elevated p-6 sm:min-h-[172px]">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-accent-foreground">
               <f.icon className="h-5 w-5" strokeWidth={2} />
             </div>

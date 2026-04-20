@@ -10,7 +10,7 @@ export function RejectedPanelPlaceholder({ rows }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="rounded-xl border border-border bg-surface-elevated p-6 shadow-soft">
+    <div className="app-card p-6">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}

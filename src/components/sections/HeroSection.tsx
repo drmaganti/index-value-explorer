@@ -5,11 +5,11 @@ export function HeroSection() {
   return (
     <section className="relative overflow-hidden border-b border-border/60">
       <div className="absolute inset-0 grid-bg opacity-[0.4] pointer-events-none" />
-      <div className="relative mx-auto max-w-7xl px-6 pt-20 pb-24 sm:pt-28 sm:pb-32">
+      <div className="page-container relative pt-20 pb-24 sm:pt-28 sm:pb-32">
         <div className="mx-auto max-w-3xl text-center">
           <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-border bg-surface-elevated px-3 py-1 text-xs font-medium text-muted-foreground shadow-soft">
             <span className="h-1.5 w-1.5 rounded-full bg-success" />
-            Long-horizon · Quality + Value screening
+            Long-horizon screen · Quality + value lens
           </div>
 
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
@@ -18,8 +18,7 @@ export function HeroSection() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg text-pretty">
-            Analyze an index like QQQ or SPY, detect high-quality stocks on recent
-            pullback, and get a ranked top 10 report tuned for a 2+ year investment lens.
+            Analyze QQQ, SPY, or DIA, isolate established businesses trading below recent highs, and review a ranked shortlist built for further research.
           </p>
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">

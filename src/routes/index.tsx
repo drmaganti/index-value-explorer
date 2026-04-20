@@ -27,20 +27,17 @@ function Index() {
     <>
       <HeroSection />
       <FeatureStrip />
-      <section className="mx-auto max-w-7xl px-6 pb-20">
-        <div className="grid gap-6 rounded-2xl border border-border bg-surface-elevated p-8 shadow-soft sm:p-12 md:grid-cols-[1.2fr_1fr]">
+      <section className="page-container pb-20">
+        <div className="grid gap-6 rounded-xl border border-border bg-surface-elevated p-8 shadow-soft sm:p-12 md:grid-cols-[1.2fr_1fr]">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
               How it works
             </p>
             <h2 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl text-balance">
-              A high-signal lens, not another trading dashboard.
+              A cleaner way to review pullbacks inside major indexes.
             </h2>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base text-pretty">
-              The agent screens an index for established large caps that have meaningfully
-              pulled back from recent highs, then evaluates fundamentals — margins, growth,
-              balance sheet — to surface only the names that fit a long-horizon quality
-              + value lens.
+              The workflow starts with a defined index universe, screens for durable large caps, checks the pullback range, then ranks survivors on valuation and quality factors.
             </p>
           </div>
           <ol className="space-y-4 text-sm">

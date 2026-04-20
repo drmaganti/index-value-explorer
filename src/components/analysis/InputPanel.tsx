@@ -51,7 +51,7 @@ export function InputPanel() {
     <div className="space-y-6">
       <form
         onSubmit={handleSubmit}
-        className="rounded-xl border border-border bg-surface-elevated p-6 shadow-soft sm:p-8"
+        className="app-card p-6 sm:p-8"
         noValidate
       >
         <fieldset disabled={isRunning} className="space-y-6 disabled:opacity-60">

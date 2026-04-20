@@ -6,7 +6,7 @@ import { AppShell } from "../components/layout/AppShell";
 function NotFoundComponent() {
   return (
     <AppShell>
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
+      <div className="page-container flex min-h-[60vh] items-center justify-center py-12">
         <div className="max-w-md text-center">
           <p className="font-mono text-xs uppercase tracking-wider text-muted-foreground">Error 404</p>
           <h1 className="mt-2 text-5xl font-semibold tracking-tight">Page not found</h1>
