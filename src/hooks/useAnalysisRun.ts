@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
+  AnalysisErrorCode,
   AnalysisReport,
   AnalysisRequest,
   AnalysisStatus,
@@ -12,6 +13,7 @@ interface UseAnalysisRunResult {
   status: AnalysisStatus;
   steps: AnalysisStep[];
   report: AnalysisReport | null;
+  errorCode: AnalysisErrorCode | null;
   errorMessage: string | null;
   start: (request: AnalysisRequest) => void;
   cancel: () => void;
@@ -26,6 +28,7 @@ export function useAnalysisRun(
     INITIAL_STEPS.map((s) => ({ ...s })),
   );
   const [report, setReport] = useState<AnalysisReport | null>(null);
+  const [errorCode, setErrorCode] = useState<AnalysisErrorCode | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const handleRef = useRef<RunHandle | null>(null);
 
@@ -39,6 +42,7 @@ export function useAnalysisRun(
     setStatus("idle");
     setSteps(INITIAL_STEPS.map((s) => ({ ...s })));
     setReport(null);
+    setErrorCode(null);
     setErrorMessage(null);
   }, [cancel]);
 
@@ -47,6 +51,7 @@ export function useAnalysisRun(
       cancel();
       setStatus("running");
       setReport(null);
+      setErrorCode(null);
       setErrorMessage(null);
       setSteps(INITIAL_STEPS.map((s) => ({ ...s })));
 
@@ -57,8 +62,9 @@ export function useAnalysisRun(
           setStatus("success");
           onComplete?.(result);
         },
-        onError: (message, lastSteps) => {
+        onError: (code, message, lastSteps) => {
           setSteps(lastSteps);
+          setErrorCode(code);
           setErrorMessage(message);
           setStatus("error");
         },
@@ -69,5 +75,5 @@ export function useAnalysisRun(
 
   useEffect(() => () => cancel(), [cancel]);
 
-  return { status, steps, report, errorMessage, start, cancel, reset };
+  return { status, steps, report, errorCode, errorMessage, start, cancel, reset };
 }
