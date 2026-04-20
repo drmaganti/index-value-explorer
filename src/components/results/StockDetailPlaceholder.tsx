@@ -54,6 +54,7 @@ export function StockDetailPlaceholder({ stock }: Props) {
       ? "Margin profile leaves less room if growth slows."
       : "Margin structure provides some downside cushion.",
   ];
+  const missingCount = stock.missingDataCount;
 
   return (
     <div className="rounded-xl border border-border bg-surface-elevated p-6 shadow-soft">
@@ -69,6 +70,11 @@ export function StockDetailPlaceholder({ stock }: Props) {
           Score {stock.score}
         </span>
       </div>
+      {stock.hasPartialData ? (
+        <div className="mt-4 rounded-md border border-border bg-surface px-3 py-2 text-xs text-muted-foreground">
+          Partial data: {missingCount} fields unavailable in this snapshot. Ranking was preserved with the metrics on hand.
+        </div>
+      ) : null}
 
       <div className="mt-5 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-3">
@@ -155,21 +161,21 @@ export function StockDetailPlaceholder({ stock }: Props) {
 }
 
 function formatPrice(value?: number): string {
-  return value == null ? "—" : `$${value.toFixed(value >= 100 ? 0 : 2)}`;
+  return value == null ? "Data unavailable" : `$${value.toFixed(value >= 100 ? 0 : 2)}`;
 }
 
 function formatMultiple(value?: number): string {
-  return value == null ? "—" : `${value.toFixed(1)}x`;
+  return value == null ? "Data unavailable" : `${value.toFixed(1)}x`;
 }
 
 function formatPercent(value?: number): string {
-  return value == null ? "—" : `${value.toFixed(1)}%`;
+  return value == null ? "Data unavailable" : `${value.toFixed(1)}%`;
 }
 
 function formatBillions(value?: number): string {
-  return value == null ? "—" : `$${value.toFixed(1)}B`;
+  return value == null ? "Data unavailable" : `$${value.toFixed(1)}B`;
 }
 
 function formatRatio(value?: number): string {
-  return value == null ? "—" : value.toFixed(2);
+  return value == null ? "Data unavailable" : value.toFixed(2);
 }
