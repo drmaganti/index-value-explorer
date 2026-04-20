@@ -1,4 +1,5 @@
-import { XCircle } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, XCircle } from "lucide-react";
 import type { RejectedCandidate } from "@/lib/analysis/types";
 
 interface Props {
@@ -6,30 +7,48 @@ interface Props {
 }
 
 export function RejectedPanelPlaceholder({ rows }: Props) {
+  const [open, setOpen] = useState(false);
+
   return (
     <div className="rounded-xl border border-border bg-surface-elevated p-6 shadow-soft">
-      <div className="flex items-center justify-between">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-4 text-left"
+      >
         <div>
           <p className="text-sm font-semibold">Rejected candidates</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Notable names that passed initial filters but were screened out.
+            Names excluded by hard filters, with explicit rejection reasons.
           </p>
         </div>
-        <span className="rounded-full bg-muted px-2.5 py-1 font-mono text-xs text-muted-foreground">
-          {rows.length}
+        <span className="flex items-center gap-2">
+          <span className="rounded-full bg-muted px-2.5 py-1 font-mono text-xs text-muted-foreground">
+            {rows.length}
+          </span>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
         </span>
-      </div>
-      <ul className="mt-4 divide-y divide-border">
-        {rows.map((r) => (
-          <li key={r.ticker} className="flex items-center justify-between py-2.5 text-sm">
-            <span className="flex items-center gap-2.5">
-              <XCircle className="h-4 w-4 text-muted-foreground" />
-              <span className="font-mono font-medium">{r.ticker}</span>
-            </span>
-            <span className="text-xs text-muted-foreground">{r.reason}</span>
-          </li>
-        ))}
-      </ul>
+      </button>
+      {open ? (
+        <ul className="mt-4 divide-y divide-border">
+          {rows.map((r) => (
+            <li key={r.ticker} className="flex flex-col gap-2 py-3 text-sm md:flex-row md:items-start md:justify-between">
+              <div className="flex items-start gap-2.5">
+                <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <div>
+                  <p className="font-mono font-medium">{r.ticker} {r.name ? <span className="font-sans text-muted-foreground">· {r.name}</span> : null}</p>
+                  {r.sector ? <p className="text-xs text-muted-foreground">{r.sector}</p> : null}
+                </div>
+              </div>
+              <div className="space-y-1 text-xs text-muted-foreground md:max-w-[55%]">
+                {(r.reasons ?? [r.reason]).map((reason) => (
+                  <p key={reason}>{reason}</p>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

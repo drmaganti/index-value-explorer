@@ -49,17 +49,40 @@ export interface RankedCandidate {
   sector: string;
   pullbackPct: number;              // negative number, e.g. -21.4
   score: number;                    // 0..100
+  marketCapB?: number;
+  currentPrice?: number;
+  high52Week?: number;
+  low52Week?: number;
+  forwardPE?: number;
+  revenueGrowthPct?: number;
+  operatingMarginPct?: number;
+  trailingPE?: number;
+  evToEbitda?: number;
+  priceToBook?: number;
+  earningsGrowthPct?: number;
+  grossMarginPct?: number;
+  returnOnEquityPct?: number;
+  freeCashFlowB?: number;
+  debtToEquity?: number;
+  beta?: number;
+  above200dma?: boolean;
+  passReasons: string[];
+  factorHighlights: string[];
 }
 
 export interface RejectedCandidate {
   ticker: string;
+  name?: string;
+  sector?: string;
   reason: string;
+  reasons?: string[];
 }
 
 export interface AnalysisSummary {
   constituentsScanned: number;
-  candidatesOnPullback: number;
+  passedCount: number;
   topCount: number;
+  universeName: string;
 }
 
 export interface AnalysisReport {
