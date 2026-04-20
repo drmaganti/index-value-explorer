@@ -76,8 +76,8 @@ function ResultsPage() {
     <>
       <PageHeader
         eyebrow={`${isSample ? "Sample report · " : "Report · "}${report.request.symbol}`}
-        title={`Top ${report.summary.topCount} blue-chip value opportunities`}
-        description={`Generated ${new Date(report.generatedAt).toLocaleString()} · ${report.request.settings.mode} mode`}
+        title={`${report.summary.universeName} screen results`}
+        description={`${new Date(report.generatedAt).toLocaleString()} · ${report.summary.constituentsScanned} constituents analyzed · ${report.summary.passedCount} passed filters · top ${report.summary.topCount} returned`}
         actions={
           <>
             <Link
@@ -112,7 +112,7 @@ function ResultsPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold tracking-tight">Ranked candidates</h2>
-              <p className="text-xs text-muted-foreground">Click a row to inspect</p>
+              <p className="text-xs text-muted-foreground">Click a row to inspect fundamentals and rationale</p>
             </div>
             <RankedTablePlaceholder
               rows={report.ranked}
