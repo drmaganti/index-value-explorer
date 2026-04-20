@@ -107,7 +107,7 @@ function ResultsPage() {
         }
       />
 
-      <div className="mx-auto max-w-7xl space-y-8 px-6 py-10">
+      <div className="page-container space-y-8 py-10">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span className="rounded-full border border-border bg-surface px-2.5 py-1">Last updated {new Date(report.generatedAt).toLocaleString()}</span>
           <span className="rounded-full border border-border bg-surface px-2.5 py-1">{report.summary.metricsAvailable}/{report.summary.constituentsScanned} stocks with metrics</span>

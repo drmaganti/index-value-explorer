@@ -26,22 +26,22 @@ const sections = [
   {
     icon: ShieldCheck,
     title: "What “blue-chip” means here",
-    body: "We define blue-chip as large, established, financially durable companies — typically with a market cap above a configurable floor (default $50B), a multi-year track record of revenue and earnings, and meaningful liquidity. The goal is to exclude speculative or fragile names from the start.",
+    body: "Here it means large, established businesses with durable economics, meaningful liquidity, and enough fundamental history to screen with confidence. The goal is to exclude fragile or speculative names before ranking begins.",
   },
   {
     icon: TrendingDown,
     title: "What “pullback” means",
-    body: "A pullback is a meaningful drawdown from a recent 52-week high — by default at least −15% — within a defined lookback window (default 6 months). The intent is to surface names that have come off recent peaks without necessarily breaking trend or fundamentals.",
+    body: "A pullback is a meaningful move below a recent 52-week high. The screen looks for names that have reset without automatically assuming the underlying business has weakened.",
   },
   {
     icon: Scale,
     title: "Why quality and value are blended",
-    body: "Cheap alone is not enough — many low-multiple stocks are cheap for good reason. By blending value (multiples, free cash flow yield) with quality (margins, returns on capital, balance sheet strength), the screen biases toward names where the discount is more likely to reflect short-term sentiment than structural decline.",
+    body: "Cheap alone is not enough. The ranking blends valuation with operating quality so the shortlist favors discounts that may reflect sentiment or timing rather than lasting business deterioration.",
   },
   {
     icon: AlertTriangle,
     title: "This is a screening tool, not financial advice",
-    body: "Index Value Agent surfaces candidates for further research. It does not account for your goals, time horizon, taxes, or risk tolerance. Always do your own due diligence and consult a qualified advisor before making any investment decision.",
+    body: "Index Value Agent surfaces candidates for further review. It does not know your objectives, constraints, taxes, or risk tolerance, so every result should be treated as research input rather than a recommendation.",
   },
 ];
 
@@ -53,12 +53,12 @@ function MethodologyPage() {
         title="How the agent thinks"
         description="A plain-English explanation of how candidates are defined, filtered, and ranked."
       />
-      <div className="mx-auto max-w-3xl px-6 py-12">
+      <div className="page-container-narrow py-12">
         <div className="space-y-6">
           {sections.map((s) => (
             <article
               key={s.title}
-              className="rounded-xl border border-border bg-surface-elevated p-6 shadow-soft"
+              className="app-card p-6"
             >
               <div className="flex items-start gap-4">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
@@ -76,9 +76,9 @@ function MethodologyPage() {
         </div>
 
         <div className="mt-10 rounded-xl border border-dashed border-border bg-surface p-6 text-center">
-          <p className="text-sm font-medium">Ready to try it?</p>
+          <p className="text-sm font-medium">Ready to run the screen?</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Run the screen on QQQ, SPY, or DIA in under a minute.
+            Start with QQQ, SPY, or DIA and review the ranked output in a few seconds.
           </p>
           <Link
             to="/analyze"

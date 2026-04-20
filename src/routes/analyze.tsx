@@ -27,9 +27,9 @@ function AnalyzePage() {
       <PageHeader
         eyebrow="Analysis"
         title="Run an index analysis"
-        description="Choose an index ETF and the agent will screen its constituents for blue-chip names trading at a discount after a recent pullback."
+        description="Choose a supported ETF, adjust the screening rules if needed, and generate a ranked shortlist for review."
       />
-      <div className="mx-auto max-w-3xl px-6 py-10">
+      <div className="page-container-narrow py-10">
         <InputPanel />
       </div>
     </>
