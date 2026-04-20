@@ -23,6 +23,11 @@ export function ProgressPanel({ symbol, steps, status, onCancel }: Props) {
             <p className="font-mono text-xl font-semibold tracking-tight">{symbol}</p>
             <p className="font-mono text-xs text-muted-foreground">{progress}%</p>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {status === "success"
+              ? "Report built and ready to review."
+              : "Checking constituents, fundamentals, and ranking candidates step by step."}
+          </p>
         </div>
         {status === "running" && (
           <div className="flex items-center gap-2">
