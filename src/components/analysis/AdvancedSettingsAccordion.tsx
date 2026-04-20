@@ -33,7 +33,7 @@ export function AdvancedSettingsAccordion({ settings, onChange, errors, disabled
 
   return (
     <div
-      className={`rounded-lg border bg-surface ${
+      className={`rounded-xl border bg-surface ${
         hasErrors ? "border-destructive/40" : "border-border"
       }`}
     >
