@@ -18,7 +18,7 @@ export function InputPanel() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitted, setSubmitted] = useState(false);
 
-  const { status, steps, errorMessage, start, cancel, reset } = useAnalysisRun(
+  const { status, steps, errorCode, errorMessage, start, cancel, reset } = useAnalysisRun(
     (report) => {
       setLastReport(report);
       // Slight delay so the user sees the final "complete" tick.
@@ -45,6 +45,7 @@ export function InputPanel() {
   const isRunning = status === "running";
   const showError = status === "error";
   const showResults = status === "success";
+  const errorContent = getErrorContent(errorCode, errorMessage);
 
   return (
     <div className="space-y-6">
@@ -76,6 +77,7 @@ export function InputPanel() {
                   autoComplete="off"
                   spellCheck={false}
                   maxLength={8}
+                  aria-describedby="symbol-helper"
                   aria-invalid={!!(errors.symbol || liveErrors.symbol)}
                   className={`h-11 w-full rounded-md border bg-background px-3.5 font-mono text-sm uppercase tracking-wide outline-none transition-shadow focus:ring-2 focus:ring-ring/30 ${
                     errors.symbol || liveErrors.symbol
@@ -91,6 +93,7 @@ export function InputPanel() {
                     : ""
                 }
                 onChange={(e) => e.target.value && setSymbol(e.target.value)}
+                aria-label="Quick select supported index symbol"
                 className="h-11 rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/30 sm:w-44"
               >
                 <option value="">Quick pick…</option>
@@ -107,6 +110,9 @@ export function InputPanel() {
                 {errors.symbol || liveErrors.symbol}
               </p>
             )}
+            <p id="symbol-helper" className="mt-2 text-xs text-muted-foreground">
+              The demo supports QQQ, SPY, and DIA. Unsupported symbols stay on this page with a clear error.
+            </p>
           </div>
 
           <AdvancedSettingsAccordion
@@ -122,11 +128,12 @@ export function InputPanel() {
           <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="flex items-start gap-2 text-xs text-muted-foreground sm:max-w-md">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              Analysis takes ~5 seconds in this demo. Real runs will use live data.
+              Analysis takes ~5 seconds in this demo. Partial data is flagged in the report rather than causing a hard failure.
             </p>
             <button
               type="submit"
               disabled={isRunning}
+              aria-label={isRunning ? "Analysis running" : "Run index analysis"}
               className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow-soft transition-colors hover:bg-primary/90 disabled:cursor-not-allowed"
             >
               <Play className="h-4 w-4" />
@@ -147,8 +154,9 @@ export function InputPanel() {
 
       {showError && (
         <ErrorState
-          title="Analysis failed"
-          description={errorMessage ?? "Please try again."}
+          title={errorContent.title}
+          description={errorContent.description}
+          details={errorContent.details}
           action={
             <button
               type="button"
@@ -162,4 +170,33 @@ export function InputPanel() {
       )}
     </div>
   );
+}
+
+function getErrorContent(errorCode: string | null, fallbackMessage: string | null) {
+  switch (errorCode) {
+    case "UNSUPPORTED_SYMBOL":
+      return {
+        title: "Symbol not supported yet",
+        description: fallbackMessage ?? "This demo currently supports QQQ, SPY, and DIA only.",
+        details: ["Try one of the supported ETF symbols.", "Use Quick pick to avoid formatting mistakes."],
+      };
+    case "NO_CONSTITUENTS":
+      return {
+        title: "No constituents were available",
+        description: fallbackMessage ?? "We could not build an investable universe for this run.",
+        details: ["Try a different supported symbol.", "Re-run in a moment in case the provider snapshot was incomplete."],
+      };
+    case "PROVIDER_FAILURE":
+      return {
+        title: "Data provider problem",
+        description: fallbackMessage ?? "One of the data sources did not respond cleanly.",
+        details: ["Your settings were preserved.", "Re-running usually resolves transient provider issues."],
+      };
+    default:
+      return {
+        title: "Analysis failed",
+        description: fallbackMessage ?? "Please try again.",
+        details: ["Check the symbol and settings.", "If the problem persists, try a simpler configuration."],
+      };
+  }
 }

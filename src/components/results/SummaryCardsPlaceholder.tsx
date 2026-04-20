@@ -55,11 +55,11 @@ export function SummaryCardsPlaceholder({ report }: Props) {
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
       {cards.map((c) => (
         <div
           key={c.label}
-          className="rounded-xl border border-border bg-surface-elevated p-5 shadow-soft"
+          className="min-h-[128px] rounded-xl border border-border bg-surface-elevated p-5 shadow-soft"
         >
           <p className="text-xs uppercase tracking-wider text-muted-foreground">{c.label}</p>
           <p className="mt-2 font-mono text-3xl font-semibold tracking-tight">{c.value}</p>
@@ -68,17 +68,4 @@ export function SummaryCardsPlaceholder({ report }: Props) {
       ))}
     </div>
   );
-}
-
-function indexLabel(symbol: string): string {
-  switch (symbol) {
-    case "QQQ":
-      return "Nasdaq-100 ETF";
-    case "SPY":
-      return "S&P 500 ETF";
-    case "DIA":
-      return "Dow Jones 30 ETF";
-    default:
-      return "Index ETF";
-  }
 }

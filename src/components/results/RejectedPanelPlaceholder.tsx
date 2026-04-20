@@ -14,6 +14,8 @@ export function RejectedPanelPlaceholder({ rows }: Props) {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-controls="rejected-candidates-panel"
         className="flex w-full items-center justify-between gap-4 text-left"
       >
         <div>
@@ -30,7 +32,7 @@ export function RejectedPanelPlaceholder({ rows }: Props) {
         </span>
       </button>
       {open ? (
-        <ul className="mt-4 divide-y divide-border">
+        <ul id="rejected-candidates-panel" className="mt-4 divide-y divide-border">
           {rows.map((r) => (
             <li key={r.ticker} className="flex flex-col gap-2 py-3 text-sm md:flex-row md:items-start md:justify-between">
               <div className="flex items-start gap-2.5">

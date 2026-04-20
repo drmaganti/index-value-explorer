@@ -1,4 +1,4 @@
-import { ArrowDownRight } from "lucide-react";
+import { AlertCircle, ArrowDownRight } from "lucide-react";
 import type { RankedCandidate } from "@/lib/analysis/types";
 import { EmptyState } from "@/components/common/EmptyState";
 
@@ -21,7 +21,7 @@ export function RankedTablePlaceholder({ rows, onSelect, selectedTicker }: Props
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-soft">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[980px] text-sm">
           <thead>
             <tr className="border-b border-border bg-surface text-left">
               <th className="px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">#</th>
@@ -45,13 +45,31 @@ export function RankedTablePlaceholder({ rows, onSelect, selectedTicker }: Props
                 <tr
                   key={row.ticker}
                   onClick={() => onSelect?.(row)}
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onSelect?.(row);
+                    }
+                  }}
+                  aria-label={`Open detail for ${row.ticker}`}
                   className={`cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-muted/60 ${selected ? "bg-accent/40" : ""}`}
                 >
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                     {row.rank.toString().padStart(2, "0")}
                   </td>
                   <td className="px-4 py-3 font-mono font-semibold">{row.ticker}</td>
-                  <td className="px-4 py-3">{row.name}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span>{row.name}</span>
+                      {row.hasPartialData ? (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                          <AlertCircle className="h-3 w-3" />
+                          Partial data
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
                   <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
                     {row.sector}
                   </td>
@@ -105,11 +123,11 @@ function formatPrice(value?: number): string {
 }
 
 function formatMultiple(value?: number): string {
-  return value == null ? "—" : `${value.toFixed(1)}x`;
+  return value == null ? "Data unavailable" : `${value.toFixed(1)}x`;
 }
 
 function formatPercent(value?: number): string {
-  return value == null ? "—" : `${value.toFixed(1)}%`;
+  return value == null ? "Data unavailable" : `${value.toFixed(1)}%`;
 }
 
 function qualityLabel(margin?: number): string {
