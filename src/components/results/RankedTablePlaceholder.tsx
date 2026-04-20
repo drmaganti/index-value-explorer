@@ -13,13 +13,17 @@ export function RankedTablePlaceholder({ rows, onSelect, selectedTicker }: Props
     return (
       <EmptyState
         title="No candidates matched your filters"
-        description="Try widening the pullback range or lowering the market-cap floor."
+        description="No stock cleared every hard filter in this run."
+        details={[
+          "Loosen the pullback band or reduce the market-cap floor.",
+          "Consider allowing names below the 200-day moving average.",
+        ]}
       />
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-soft">
+    <div className="app-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[980px] text-sm">
           <thead>

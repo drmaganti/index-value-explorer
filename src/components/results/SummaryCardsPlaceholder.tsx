@@ -59,7 +59,7 @@ export function SummaryCardsPlaceholder({ report }: Props) {
       {cards.map((c) => (
         <div
           key={c.label}
-          className="min-h-[128px] rounded-xl border border-border bg-surface-elevated p-5 shadow-soft"
+          className="app-card min-h-[128px] p-5"
         >
           <p className="text-xs uppercase tracking-wider text-muted-foreground">{c.label}</p>
           <p className="mt-2 font-mono text-3xl font-semibold tracking-tight">{c.value}</p>
