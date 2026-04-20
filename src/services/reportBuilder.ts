@@ -11,18 +11,26 @@ export function buildReportFromEngine(
   engine: EngineResult,
 ): AnalysisReport {
   const universeName = indexLabel(request.symbol);
+  const ranked = engine.ranked.map((r) => {
+    const missingDataCount = countMissingFields([
+      r.metrics.currentPrice,
+      r.metrics.high52Week,
+      r.metrics.low52Week,
+      r.metrics.forwardPE,
+      r.metrics.trailingPE,
+      r.metrics.evToEbitda,
+      r.metrics.priceToBook,
+      r.metrics.revenueGrowthPct,
+      r.metrics.earningsGrowthPct,
+      r.metrics.operatingMarginPct,
+      r.metrics.grossMarginPct,
+      r.metrics.returnOnEquityPct,
+      r.metrics.freeCashFlowB,
+      r.metrics.debtToEquity,
+      r.metrics.beta,
+    ]);
 
-  return {
-    id: `report-${Date.now()}`,
-    request,
-    generatedAt: new Date().toISOString(),
-    summary: {
-      constituentsScanned: engine.summary.constituentsScanned,
-      passedCount: engine.summary.passedCount,
-      topCount: engine.summary.topCount,
-      universeName,
-    },
-    ranked: engine.ranked.map((r) => ({
+    return {
       rank: r.rank,
       ticker: r.ticker,
       name: r.name,
@@ -48,7 +56,29 @@ export function buildReportFromEngine(
       above200dma: r.metrics.above200dma,
       passReasons: r.passReasons,
       factorHighlights: r.passReasons.slice(1),
-    })),
+      hasPartialData: missingDataCount > 0,
+      missingDataCount,
+    };
+  });
+  const partialDataCount = ranked.filter((stock) => stock.hasPartialData).length;
+
+  return {
+    id: `report-${Date.now()}`,
+    request,
+    generatedAt: new Date().toISOString(),
+    summary: {
+      constituentsScanned: engine.summary.constituentsScanned,
+      passedCount: engine.summary.passedCount,
+      rejectedCount: engine.summary.rejectedCount,
+      topCount: engine.summary.topCount,
+      universeName,
+      metricsAvailable: engine.summary.metricsAvailable,
+      dataCompletenessPct: Math.round(
+        (engine.summary.metricsAvailable / Math.max(engine.summary.constituentsScanned, 1)) * 100,
+      ),
+      partialDataCount,
+    },
+    ranked,
     rejected: engine.rejected.map((r) => ({
       ticker: r.ticker,
       name: r.name,
@@ -58,6 +88,10 @@ export function buildReportFromEngine(
       reasons: r.reasons.map((reason) => reason.message),
     })),
   };
+}
+
+function countMissingFields(values: Array<number | boolean | undefined>): number {
+  return values.filter((value) => value == null).length;
 }
 
 function indexLabel(symbol: string): string {

@@ -68,6 +68,8 @@ export interface RankedCandidate {
   above200dma?: boolean;
   passReasons: string[];
   factorHighlights: string[];
+  hasPartialData: boolean;
+  missingDataCount: number;
 }
 
 export interface RejectedCandidate {
@@ -81,8 +83,12 @@ export interface RejectedCandidate {
 export interface AnalysisSummary {
   constituentsScanned: number;
   passedCount: number;
+  rejectedCount: number;
   topCount: number;
   universeName: string;
+  metricsAvailable: number;
+  dataCompletenessPct: number;
+  partialDataCount: number;
 }
 
 export interface AnalysisReport {
@@ -95,3 +101,10 @@ export interface AnalysisReport {
 }
 
 export type AnalysisStatus = "idle" | "running" | "success" | "error";
+
+export type AnalysisErrorCode =
+  | "INVALID_SYMBOL"
+  | "UNSUPPORTED_SYMBOL"
+  | "NO_CONSTITUENTS"
+  | "PROVIDER_FAILURE"
+  | "ANALYSIS_FAILURE";

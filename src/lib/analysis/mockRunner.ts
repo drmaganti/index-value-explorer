@@ -1,4 +1,5 @@
 import type {
+  AnalysisErrorCode,
   AnalysisReport,
   AnalysisRequest,
   AnalysisStep,
@@ -43,7 +44,7 @@ export interface RunHandle {
 export interface RunCallbacks {
   onStep: (steps: AnalysisStep[]) => void;
   onComplete: (report: AnalysisReport) => void;
-  onError: (message: string, steps: AnalysisStep[]) => void;
+  onError: (code: AnalysisErrorCode, message: string, steps: AnalysisStep[]) => void;
 }
 
 export interface RunDeps {
@@ -77,12 +78,22 @@ export function runMockAnalysis(
 
   const filters: FilterConfig = toFilterConfig(request);
   const scoring: ScoringConfig = toScoringConfig(request);
+  const fail = (code: AnalysisErrorCode, message: string, stepIndex?: number) => {
+    if (typeof stepIndex === "number") {
+      setStepStatus(stepIndex, "error");
+    }
+    callbacks.onError(code, message, [...steps]);
+  };
 
   void (async () => {
     try {
       // 1. Fetch constituents
       setStepStatus(0, "active");
       const constituents = await indexProvider.getConstituents(request.symbol);
+      if (constituents.length === 0) {
+        fail("NO_CONSTITUENTS", "No constituents were available for this symbol.", 0);
+        return;
+      }
       await wait(STEP_DURATIONS_MS.fetch_constituents);
       if (cancelled) return;
       setStepStatus(0, "done");
@@ -127,7 +138,8 @@ export function runMockAnalysis(
     } catch (err) {
       if (cancelled) return;
       const message = err instanceof Error ? err.message : "Unknown error";
-      callbacks.onError(message, [...steps]);
+      const code = classifyError(message, request.symbol);
+      fail(code, message, steps.findIndex((step) => step.status === "active"));
     }
   })();
 
@@ -137,6 +149,17 @@ export function runMockAnalysis(
       timeouts.forEach(clearTimeout);
     },
   };
+}
+
+function classifyError(message: string, symbol: string): AnalysisErrorCode {
+  const lower = message.toLowerCase();
+  if (!symbol.trim()) return "INVALID_SYMBOL";
+  if (lower.includes("unsupported index symbol")) return "UNSUPPORTED_SYMBOL";
+  if (lower.includes("no constituents")) return "NO_CONSTITUENTS";
+  if (lower.includes("provider") || lower.includes("fundamental") || lower.includes("network")) {
+    return "PROVIDER_FAILURE";
+  }
+  return "ANALYSIS_FAILURE";
 }
 
 /* ------------------------------------------------------------------ */
