@@ -16,3 +16,7 @@ export {
   type FundamentalsProvider,
   FinnhubFundamentalsProvider,
 } from "./fundamentalsProvider";
+export {
+  YahooFundamentalsProvider,
+  type YahooSupplementalMetrics,
+} from "./yahooFundamentalsProvider";

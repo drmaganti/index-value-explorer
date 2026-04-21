@@ -1,7 +1,17 @@
 import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
 import type { AnalysisRequest } from "./types";
-import { buildReportFromEngine, constituentsToTickers, FinnhubFundamentalsProvider, FinnhubIndexProvider, runScoringEngine, type FilterConfig, type ScoringConfig, DEFAULT_SCORING_WEIGHTS } from "@/services";
+import {
+  buildReportFromEngine,
+  constituentsToTickers,
+  FinnhubFundamentalsProvider,
+  FinnhubIndexProvider,
+  YahooFundamentalsProvider,
+  runScoringEngine,
+  type FilterConfig,
+  type ScoringConfig,
+  DEFAULT_SCORING_WEIGHTS,
+} from "@/services";
 
 const analysisModeSchema = z.enum(["conservative", "balanced", "opportunistic"]);
 
@@ -35,13 +45,31 @@ export const runAnalysis = createServerFn({ method: "POST" })
 
     const indexProvider = new FinnhubIndexProvider(apiKey);
     const fundamentalsProvider = new FinnhubFundamentalsProvider(apiKey);
+    const yahooProvider = new YahooFundamentalsProvider();
 
     const constituents = await indexProvider.getConstituents(request.symbol);
-    const metrics = await fundamentalsProvider.getMetrics(constituentsToTickers(constituents));
+    const tickers = constituentsToTickers(constituents);
+    const [metrics, supplemental] = await Promise.all([
+      fundamentalsProvider.getMetrics(tickers),
+      yahooProvider.getSupplementalMetrics(tickers),
+    ]);
+
+    const supplementalByTicker = new Map(
+      supplemental.map((entry) => [entry.ticker, entry]),
+    );
+    const enrichedMetrics = metrics.map((metric) => {
+      const extra = supplementalByTicker.get(metric.ticker.toUpperCase());
+      if (!extra) return metric;
+      return {
+        ...metric,
+        evToEbitda: metric.evToEbitda ?? extra.evToEbitda,
+        freeCashFlowB: metric.freeCashFlowB ?? extra.freeCashFlowB,
+      };
+    });
 
     const engineResult = runScoringEngine({
       constituents,
-      metrics,
+      metrics: enrichedMetrics,
       filters: toFilterConfig(request),
       scoring: toScoringConfig(request),
     });
