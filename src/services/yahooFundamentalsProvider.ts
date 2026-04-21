@@ -25,7 +25,7 @@ export interface YahooSupplementalMetrics {
 
 export class YahooFundamentalsProvider {
   private readonly concurrency: number;
-  private readonly client: YahooFinance;
+  private readonly client: InstanceType<typeof YahooFinance>;
 
   constructor(concurrency = 6) {
     this.concurrency = concurrency;
