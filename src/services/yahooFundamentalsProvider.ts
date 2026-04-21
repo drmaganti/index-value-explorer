@@ -1,4 +1,4 @@
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
 
 interface YahooQuoteSummary {
   defaultKeyStatistics?: {
@@ -25,9 +25,13 @@ export interface YahooSupplementalMetrics {
 
 export class YahooFundamentalsProvider {
   private readonly concurrency: number;
+  private readonly client: YahooFinance;
 
   constructor(concurrency = 6) {
     this.concurrency = concurrency;
+    this.client = new YahooFinance({
+      suppressNotices: ["yahooSurvey", "ripHistorical"],
+    });
   }
 
   async getSupplementalMetrics(
@@ -55,7 +59,7 @@ export class YahooFundamentalsProvider {
     ticker: string,
   ): Promise<YahooSupplementalMetrics | null> {
     try {
-      const summary = (await yahooFinance.quoteSummary(ticker, {
+      const summary = (await this.client.quoteSummary(ticker, {
         modules: ["defaultKeyStatistics", "financialData"],
       })) as YahooQuoteSummary;
 
