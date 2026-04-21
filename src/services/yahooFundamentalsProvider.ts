@@ -1,38 +1,46 @@
-import YahooFinance from "yahoo-finance2";
 import { normalizeTickerForProvider } from "./symbolNormalization";
+
+type YahooNumber = number | { raw?: number } | null | undefined;
 
 interface YahooQuoteSummary {
   price?: {
-    regularMarketPrice?: number | null;
-    marketCap?: number | null;
+    regularMarketPrice?: YahooNumber;
+    marketCap?: YahooNumber;
   };
   summaryDetail?: {
-    marketCap?: number | null;
-    fiftyTwoWeekHigh?: number | null;
-    fiftyTwoWeekLow?: number | null;
-    twoHundredDayAverage?: number | null;
-    forwardPE?: number | null;
-    trailingPE?: number | null;
-    priceToSalesTrailing12Months?: number | null;
-    beta?: number | null;
+    marketCap?: YahooNumber;
+    fiftyTwoWeekHigh?: YahooNumber;
+    fiftyTwoWeekLow?: YahooNumber;
+    twoHundredDayAverage?: YahooNumber;
+    forwardPE?: YahooNumber;
+    trailingPE?: YahooNumber;
+    priceToSalesTrailing12Months?: YahooNumber;
+    beta?: YahooNumber;
   };
   defaultKeyStatistics?: {
-    enterpriseToEbitda?: number | null;
-    forwardPE?: number | null;
-    trailingEps?: number | null;
-    priceToBook?: number | null;
-    beta?: number | null;
-    earningsQuarterlyGrowth?: number | null;
+    enterpriseToEbitda?: YahooNumber;
+    forwardPE?: YahooNumber;
+    trailingEps?: YahooNumber;
+    priceToBook?: YahooNumber;
+    beta?: YahooNumber;
+    earningsQuarterlyGrowth?: YahooNumber;
   };
   financialData?: {
-    freeCashflow?: number | null;
-    operatingMargins?: number | null;
-    grossMargins?: number | null;
-    profitMargins?: number | null;
-    returnOnEquity?: number | null;
-    revenueGrowth?: number | null;
-    earningsGrowth?: number | null;
-    debtToEquity?: number | null;
+    freeCashflow?: YahooNumber;
+    operatingMargins?: YahooNumber;
+    grossMargins?: YahooNumber;
+    profitMargins?: YahooNumber;
+    returnOnEquity?: YahooNumber;
+    revenueGrowth?: YahooNumber;
+    earningsGrowth?: YahooNumber;
+    debtToEquity?: YahooNumber;
+  };
+}
+
+interface YahooQuoteSummaryResponse {
+  quoteSummary?: {
+    result?: YahooQuoteSummary[] | null;
+    error?: { code?: string; description?: string } | null;
   };
 }
 
@@ -70,13 +78,14 @@ export interface YahooSupplementalMetrics {
 
 export class YahooFundamentalsProvider {
   private readonly concurrency: number;
-  private readonly client: InstanceType<typeof YahooFinance>;
+  private readonly fetchImpl: typeof fetch;
 
-  constructor(concurrency = 6) {
+  constructor(
+    concurrency = 6,
+    fetchImpl: typeof fetch = (...args) => globalThis.fetch(...args),
+  ) {
     this.concurrency = concurrency;
-    this.client = new YahooFinance({
-      suppressNotices: ["yahooSurvey", "ripHistorical"],
-    });
+    this.fetchImpl = fetchImpl;
   }
 
   async getSupplementalMetrics(
@@ -104,14 +113,8 @@ export class YahooFundamentalsProvider {
     ticker: string,
   ): Promise<YahooSupplementalMetrics | null> {
     try {
-      const summary = (await this.client.quoteSummary(ticker, {
-        modules: [
-          "price",
-          "summaryDetail",
-          "defaultKeyStatistics",
-          "financialData",
-        ],
-      })) as YahooQuoteSummary;
+      const summary = await this.fetchQuoteSummary(ticker);
+      if (!summary) return null;
 
       const evToEbitda = readNumber(
         summary.defaultKeyStatistics?.enterpriseToEbitda,
@@ -194,6 +197,19 @@ export class YahooFundamentalsProvider {
       return null;
     }
   }
+
+  private async fetchQuoteSummary(
+    ticker: string,
+  ): Promise<YahooQuoteSummary | null> {
+    const url = `${YAHOO_BASE}/${encodeURIComponent(ticker)}?modules=${YAHOO_MODULES}`;
+    const res = await this.fetchImpl(url, {
+      headers: { "User-Agent": YAHOO_USER_AGENT, Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as YahooQuoteSummaryResponse;
+    const result = json.quoteSummary?.result?.[0];
+    return result ?? null;
+  }
 }
 
 function readNumber(value: unknown): number | undefined {
@@ -217,3 +233,8 @@ function pctFromDecimal(value: number | undefined): number | undefined {
   if (value == null) return undefined;
   return value * 100;
 }
+
+const YAHOO_BASE = "https://query2.finance.yahoo.com/v10/finance/quoteSummary";
+const YAHOO_MODULES = "price,summaryDetail,defaultKeyStatistics,financialData";
+const YAHOO_USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";

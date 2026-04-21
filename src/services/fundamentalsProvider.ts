@@ -24,6 +24,10 @@ interface FinnhubProfileResponse {
 }
 
 const FINNHUB_REQUEST_BATCH_SIZE = 6;
+// Free-tier limit is 60 calls/min. Each ticker uses 3 calls × 6 per batch = 18.
+// A ~1.2s pause between batches keeps us under ~15 batches/min ≈ 270 calls/min
+// across the burst, but lets the per-second cap recover to avoid 429 storms.
+const FINNHUB_BATCH_DELAY_MS = 1200;
 
 export class FinnhubFundamentalsProvider implements FundamentalsProvider {
   constructor(
@@ -51,6 +55,11 @@ export class FinnhubFundamentalsProvider implements FundamentalsProvider {
       );
 
       metrics.push(...batchResults.filter((entry): entry is StockMetrics => Boolean(entry)));
+
+      const isLastBatch = index + FINNHUB_REQUEST_BATCH_SIZE >= normalizedTickers.length;
+      if (!isLastBatch) {
+        await new Promise((resolve) => setTimeout(resolve, FINNHUB_BATCH_DELAY_MS));
+      }
     }
 
     return metrics;
