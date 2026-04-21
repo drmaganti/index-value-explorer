@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
 import type { AnalysisRequest } from "./types";
+import type { StockMetrics, YahooSupplementalMetrics } from "@/services";
 import {
   buildReportFromEngine,
   constituentsToTickers,
@@ -12,6 +13,7 @@ import {
   type ScoringConfig,
   DEFAULT_SCORING_WEIGHTS,
 } from "@/services";
+import { normalizeTickerForProvider } from "@/services/symbolNormalization";
 
 const analysisModeSchema = z.enum(["conservative", "balanced", "opportunistic"]);
 
@@ -54,18 +56,7 @@ export const runAnalysis = createServerFn({ method: "POST" })
       yahooProvider.getSupplementalMetrics(tickers),
     ]);
 
-    const supplementalByTicker = new Map(
-      supplemental.map((entry) => [entry.ticker, entry]),
-    );
-    const enrichedMetrics = metrics.map((metric) => {
-      const extra = supplementalByTicker.get(metric.ticker.toUpperCase());
-      if (!extra) return metric;
-      return {
-        ...metric,
-        evToEbitda: metric.evToEbitda ?? extra.evToEbitda,
-        freeCashFlowB: metric.freeCashFlowB ?? extra.freeCashFlowB,
-      };
-    });
+    const enrichedMetrics = mergeFundamentals(tickers, metrics, supplemental);
 
     const engineResult = runScoringEngine({
       constituents,
@@ -76,6 +67,79 @@ export const runAnalysis = createServerFn({ method: "POST" })
 
     return buildReportFromEngine(request, engineResult);
   });
+
+/**
+ * Merge Finnhub primary metrics with Yahoo supplemental metrics.
+ *
+ * - Finnhub fields take precedence; Yahoo only fills `undefined` slots.
+ * - When Finnhub returned nothing for a ticker but Yahoo did, we synthesize
+ *   a Yahoo-only StockMetrics so the ticker can still be screened on the
+ *   core fields (price + market cap + 52W context).
+ * - Tickers are matched after symbol normalization (BRK.B → BRK-B) so the
+ *   index list, both providers, and the engine all key consistently.
+ */
+function mergeFundamentals(
+  requestedTickers: string[],
+  finnhub: StockMetrics[],
+  yahoo: YahooSupplementalMetrics[],
+): StockMetrics[] {
+  const finnhubByTicker = new Map<string, StockMetrics>(
+    finnhub.map((m) => [normalizeTickerForProvider(m.ticker), m]),
+  );
+  const yahooByTicker = new Map<string, YahooSupplementalMetrics>(
+    yahoo.map((m) => [normalizeTickerForProvider(m.ticker), m]),
+  );
+
+  const merged: StockMetrics[] = [];
+  const seen = new Set<string>();
+
+  for (const rawTicker of requestedTickers) {
+    const ticker = normalizeTickerForProvider(rawTicker);
+    if (seen.has(ticker)) continue;
+    seen.add(ticker);
+
+    const fh = finnhubByTicker.get(ticker);
+    const yh = yahooByTicker.get(ticker);
+
+    if (!fh && !yh) continue; // both providers failed → engine will mark MISSING_METRICS
+
+    if (fh && yh) {
+      merged.push({
+        ...fh,
+        ticker,
+        marketCapB: fh.marketCapB ?? yh.marketCapB,
+        currentPrice: fh.currentPrice ?? yh.currentPrice,
+        high52Week: fh.high52Week ?? yh.high52Week,
+        low52Week: fh.low52Week ?? yh.low52Week,
+        pricePctFrom52WHigh: fh.pricePctFrom52WHigh ?? yh.pricePctFrom52WHigh,
+        above200dma: fh.above200dma ?? yh.above200dma,
+        evToEbitda: fh.evToEbitda ?? yh.evToEbitda,
+        freeCashFlowB: fh.freeCashFlowB ?? yh.freeCashFlowB,
+      });
+      continue;
+    }
+
+    if (fh) {
+      merged.push({ ...fh, ticker });
+      continue;
+    }
+
+    // Yahoo-only fallback when Finnhub returned nothing.
+    merged.push({
+      ticker,
+      marketCapB: yh!.marketCapB,
+      currentPrice: yh!.currentPrice,
+      high52Week: yh!.high52Week,
+      low52Week: yh!.low52Week,
+      pricePctFrom52WHigh: yh!.pricePctFrom52WHigh,
+      above200dma: yh!.above200dma,
+      evToEbitda: yh!.evToEbitda,
+      freeCashFlowB: yh!.freeCashFlowB,
+    });
+  }
+
+  return merged;
+}
 
 function toFilterConfig(request: AnalysisRequest): FilterConfig {
   const s = request.settings;
