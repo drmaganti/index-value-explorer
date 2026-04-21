@@ -111,7 +111,8 @@ export function InputPanel() {
               </p>
             )}
             <p id="symbol-helper" className="mt-2 text-xs text-muted-foreground">
-              The demo supports QQQ, SPY, and DIA. Unsupported symbols stay on this page with a clear error.
+              US: QQQ, SPY, DIA. India: NIFTY, SENSEX. Indian indices report market cap
+              in INR — adjust the market-cap floor accordingly (₹1B ≠ $1B).
             </p>
           </div>
 
@@ -177,7 +178,9 @@ function getErrorContent(errorCode: string | null, fallbackMessage: string | nul
     case "UNSUPPORTED_SYMBOL":
       return {
         title: "Symbol not supported yet",
-        description: fallbackMessage ?? "This demo currently supports QQQ, SPY, and DIA only.",
+        description:
+          fallbackMessage ??
+          "This demo currently supports QQQ, SPY, DIA, NIFTY, and SENSEX only.",
         details: ["Try one of the supported ETF symbols.", "Use Quick pick to avoid formatting mistakes."],
       };
     case "NO_CONSTITUENTS":

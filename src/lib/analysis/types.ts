@@ -5,7 +5,7 @@
  * backend requires only replacing the runner — nothing in the UI changes.
  */
 
-export const SUPPORTED_SYMBOLS = ["QQQ", "SPY", "DIA"] as const;
+export const SUPPORTED_SYMBOLS = ["QQQ", "SPY", "DIA", "NIFTY", "SENSEX"] as const;
 export type SupportedSymbol = (typeof SUPPORTED_SYMBOLS)[number];
 
 export type AnalysisMode = "conservative" | "balanced" | "opportunistic";
