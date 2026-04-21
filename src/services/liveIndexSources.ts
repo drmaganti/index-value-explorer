@@ -49,6 +49,8 @@ async function fetchWikipediaPageHtml(
     {
       headers: {
         accept: "application/json",
+        "user-agent": "Index Value Agent/1.0 (contact: Lovable Cloud)",
+        "api-user-agent": "Index Value Agent/1.0 (Lovable Cloud)",
       },
     },
   );
