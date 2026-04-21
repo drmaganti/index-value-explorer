@@ -29,7 +29,7 @@ const FINNHUB_REQUEST_BATCH_SIZE = 6;
 export class FinnhubFundamentalsProvider implements FundamentalsProvider {
   constructor(
     private readonly apiKey: string,
-    private readonly fetchImpl: typeof fetch = fetch,
+    private readonly fetchImpl: typeof fetch = (...args) => globalThis.fetch(...args),
   ) {}
 
   async getMetrics(tickers: string[]): Promise<StockMetrics[]> {

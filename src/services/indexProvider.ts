@@ -22,7 +22,7 @@ interface FinnhubEtfHoldingsResponse {
 export class FinnhubIndexProvider implements IndexProvider {
   constructor(
     private readonly apiKey: string,
-    private readonly fetchImpl: typeof fetch = fetch,
+    private readonly fetchImpl: typeof fetch = (...args) => globalThis.fetch(...args),
   ) {}
 
   async getConstituents(symbol: string): Promise<IndexConstituent[]> {
