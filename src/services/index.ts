@@ -13,11 +13,13 @@ export { buildPassReasons, buildPassSummary } from "./explanations";
 export { buildReportFromEngine } from "./reportBuilder";
 export {
   type IndexProvider,
+  FinnhubIndexProvider,
   MockIndexProvider,
   mockIndexProvider,
 } from "./indexProvider";
 export {
   type FundamentalsProvider,
+  FinnhubFundamentalsProvider,
   MockFundamentalsProvider,
   mockFundamentalsProvider,
 } from "./fundamentalsProvider";

@@ -11,6 +11,53 @@ export interface IndexProvider {
   getConstituents(symbol: string): Promise<IndexConstituent[]>;
 }
 
+interface FinnhubEtfHoldingsResponse {
+  holdings?: Array<{
+    symbol?: string;
+    name?: string;
+    weight?: number;
+  }>;
+}
+
+export class FinnhubIndexProvider implements IndexProvider {
+  constructor(
+    private readonly apiKey: string,
+    private readonly fetchImpl: typeof fetch = fetch,
+  ) {}
+
+  async getConstituents(symbol: string): Promise<IndexConstituent[]> {
+    const normalizedSymbol = symbol.trim().toUpperCase();
+    const response = await this.fetchImpl(
+      `https://finnhub.io/api/v1/etfs/holdings?symbol=${encodeURIComponent(normalizedSymbol)}&token=${encodeURIComponent(this.apiKey)}`,
+    );
+
+    if (!response.ok) {
+      throw new Error(`Provider failure while loading ETF holdings (${response.status}).`);
+    }
+
+    const payload = (await response.json()) as FinnhubEtfHoldingsResponse;
+    const constituents = (payload.holdings ?? [])
+      .map((holding) => ({
+        ticker: holding.symbol?.trim().toUpperCase() ?? "",
+        name: holding.name?.trim() || holding.symbol?.trim().toUpperCase() || "Unknown company",
+        sector: "Unknown",
+        weight:
+          typeof holding.weight === "number"
+            ? holding.weight > 1
+              ? holding.weight / 100
+              : holding.weight
+            : undefined,
+      }))
+      .filter((holding) => holding.ticker.length > 0);
+
+    if (constituents.length === 0) {
+      throw new Error(`No constituents were available for ${normalizedSymbol}.`);
+    }
+
+    return constituents;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Mock implementation — covers the supported indexes for the demo.   */
 /* ------------------------------------------------------------------ */
