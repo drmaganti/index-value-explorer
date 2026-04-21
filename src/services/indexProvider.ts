@@ -1,4 +1,5 @@
 import type { IndexConstituent } from "./types";
+import { fetchLiveIndexConstituents } from "./liveIndexSources";
 
 /**
  * Index provider — returns the constituents for a given index symbol.
@@ -19,16 +20,6 @@ interface FinnhubEtfHoldingsResponse {
   }>;
 }
 
-interface FinnhubIndexConstituentsResponse {
-  constituents?: string[];
-}
-
-const ETF_TO_INDEX_SYMBOL: Record<string, string> = {
-  QQQ: "^NDX",
-  SPY: "^GSPC",
-  DIA: "^DJI",
-};
-
 export class FinnhubIndexProvider implements IndexProvider {
   constructor(
     private readonly apiKey: string,
@@ -38,34 +29,12 @@ export class FinnhubIndexProvider implements IndexProvider {
   async getConstituents(symbol: string): Promise<IndexConstituent[]> {
     const normalizedSymbol = symbol.trim().toUpperCase();
 
-    const mappedIndexSymbol = ETF_TO_INDEX_SYMBOL[normalizedSymbol];
-    if (mappedIndexSymbol) {
-      const response = await this.fetchImpl(
-        `https://finnhub.io/api/v1/index/constituents?symbol=${encodeURIComponent(mappedIndexSymbol)}&token=${encodeURIComponent(this.apiKey)}`,
-      );
-
-      if (!response.ok) {
-        throw new Error(`Provider failure while loading index constituents (${response.status}).`);
-      }
-
-      const payload = await parseJsonResponse<FinnhubIndexConstituentsResponse>(
-        response,
-        "index constituents",
-      );
-      const constituents = (payload.constituents ?? [])
-        .map((ticker) => ticker.trim().toUpperCase())
-        .filter(Boolean)
-        .map((ticker) => ({
-          ticker,
-          name: ticker,
-          sector: "Unknown",
-        }));
-
-      if (constituents.length === 0) {
-        throw new Error(`No constituents were available for ${normalizedSymbol}.`);
-      }
-
-      return constituents;
+    const liveIndexConstituents = await fetchLiveIndexConstituents(
+      normalizedSymbol,
+      this.fetchImpl,
+    );
+    if (liveIndexConstituents) {
+      return liveIndexConstituents;
     }
 
     const response = await this.fetchImpl(
