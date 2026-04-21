@@ -1,38 +1,46 @@
-import YahooFinance from "yahoo-finance2";
 import { normalizeTickerForProvider } from "./symbolNormalization";
+
+type YahooNumber = number | { raw?: number } | null | undefined;
 
 interface YahooQuoteSummary {
   price?: {
-    regularMarketPrice?: number | null;
-    marketCap?: number | null;
+    regularMarketPrice?: YahooNumber;
+    marketCap?: YahooNumber;
   };
   summaryDetail?: {
-    marketCap?: number | null;
-    fiftyTwoWeekHigh?: number | null;
-    fiftyTwoWeekLow?: number | null;
-    twoHundredDayAverage?: number | null;
-    forwardPE?: number | null;
-    trailingPE?: number | null;
-    priceToSalesTrailing12Months?: number | null;
-    beta?: number | null;
+    marketCap?: YahooNumber;
+    fiftyTwoWeekHigh?: YahooNumber;
+    fiftyTwoWeekLow?: YahooNumber;
+    twoHundredDayAverage?: YahooNumber;
+    forwardPE?: YahooNumber;
+    trailingPE?: YahooNumber;
+    priceToSalesTrailing12Months?: YahooNumber;
+    beta?: YahooNumber;
   };
   defaultKeyStatistics?: {
-    enterpriseToEbitda?: number | null;
-    forwardPE?: number | null;
-    trailingEps?: number | null;
-    priceToBook?: number | null;
-    beta?: number | null;
-    earningsQuarterlyGrowth?: number | null;
+    enterpriseToEbitda?: YahooNumber;
+    forwardPE?: YahooNumber;
+    trailingEps?: YahooNumber;
+    priceToBook?: YahooNumber;
+    beta?: YahooNumber;
+    earningsQuarterlyGrowth?: YahooNumber;
   };
   financialData?: {
-    freeCashflow?: number | null;
-    operatingMargins?: number | null;
-    grossMargins?: number | null;
-    profitMargins?: number | null;
-    returnOnEquity?: number | null;
-    revenueGrowth?: number | null;
-    earningsGrowth?: number | null;
-    debtToEquity?: number | null;
+    freeCashflow?: YahooNumber;
+    operatingMargins?: YahooNumber;
+    grossMargins?: YahooNumber;
+    profitMargins?: YahooNumber;
+    returnOnEquity?: YahooNumber;
+    revenueGrowth?: YahooNumber;
+    earningsGrowth?: YahooNumber;
+    debtToEquity?: YahooNumber;
+  };
+}
+
+interface YahooQuoteSummaryResponse {
+  quoteSummary?: {
+    result?: YahooQuoteSummary[] | null;
+    error?: { code?: string; description?: string } | null;
   };
 }
 
