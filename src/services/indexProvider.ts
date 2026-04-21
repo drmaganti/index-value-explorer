@@ -31,6 +31,14 @@ export class FinnhubIndexProvider implements IndexProvider {
       `https://finnhub.io/api/v1/etf/holdings?symbol=${encodeURIComponent(normalizedSymbol)}&token=${encodeURIComponent(this.apiKey)}`,
     );
 
+    if (response.status === 403) {
+      const fallback = MOCK_CONSTITUENTS[normalizedSymbol];
+      if (fallback) {
+        return [...fallback];
+      }
+      throw new Error(`Provider failure while loading ETF holdings (${response.status}).`);
+    }
+
     if (!response.ok) {
       throw new Error(`Provider failure while loading ETF holdings (${response.status}).`);
     }
