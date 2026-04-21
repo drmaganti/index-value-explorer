@@ -33,7 +33,7 @@ export function Footer() {
         </div>
         <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-border/60 pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center">
           <p>© {new Date().getFullYear()} Index Value Agent. Built for research and review.</p>
-          <p className="font-mono">v0.1 · mock data · long-horizon</p>
+          <p className="font-mono">v0.1 · live data · long-horizon</p>
         </div>
       </div>
     </footer>
