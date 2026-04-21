@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { Download, BookOpen, Sparkles, ShieldCheck } from "lucide-react";
 import { PageHeader } from "../components/common/PageHeader";
 import { EmptyState } from "../components/common/EmptyState";
@@ -8,7 +9,7 @@ import { RankedTablePlaceholder } from "../components/results/RankedTablePlaceho
 import { StockDetailPlaceholder } from "../components/results/StockDetailPlaceholder";
 import { RejectedPanelPlaceholder } from "../components/results/RejectedPanelPlaceholder";
 import { getLastReport } from "../lib/analysis/reportStore";
-import { runMockAnalysis } from "../lib/analysis/mockRunner";
+import { runAnalysis } from "../lib/analysis/analysis.functions";
 import { DEFAULT_SETTINGS } from "../lib/analysis/defaults";
 import type { AnalysisReport, RankedCandidate } from "../lib/analysis/types";
 
@@ -32,22 +33,23 @@ export const Route = createFileRoute("/results")({
 });
 
 function ResultsPage() {
+  const runAnalysisFn = useServerFn(runAnalysis);
   const [report, setReport] = useState<AnalysisReport | null>(() => getLastReport());
 
   // If user navigates here directly with no run, build a sample so the page
   // is never empty for first-time visitors.
   useEffect(() => {
     if (report) return;
-    const handle = runMockAnalysis(
-      { symbol: "QQQ", settings: DEFAULT_SETTINGS },
-      {
-        onStep: () => {},
-        onComplete: setReport,
-        onError: () => {},
-      },
-    );
-    return () => handle.cancel();
-  }, [report]);
+    let cancelled = false;
+    void runAnalysisFn({ data: { symbol: "QQQ", settings: DEFAULT_SETTINGS } })
+      .then((nextReport) => {
+        if (!cancelled) setReport(nextReport);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [report, runAnalysisFn]);
 
   const [selected, setSelected] = useState<RankedCandidate | undefined>();
 
@@ -164,7 +166,7 @@ function ResultsPage() {
         <RejectedPanelPlaceholder rows={report.rejected} />
 
         <p className="text-center text-xs text-muted-foreground">
-          This is a screening output built from mock provider snapshots, not financial advice. See{" "}
+          This is a screening output built from live provider snapshots, not financial advice. See{" "}
           <Link to="/methodology" className="font-medium text-primary hover:underline">
             methodology
           </Link>{" "}
