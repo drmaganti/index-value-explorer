@@ -1,5 +1,14 @@
 import yahooFinance from "yahoo-finance2";
 
+interface YahooQuoteSummary {
+  defaultKeyStatistics?: {
+    enterpriseToEbitda?: number | null;
+  };
+  financialData?: {
+    freeCashflow?: number | null;
+  };
+}
+
 /**
  * Yahoo Finance supplemental provider — fills metrics that Finnhub's free
  * tier doesn't expose: enterprise value / EBITDA and free cash flow.
@@ -19,12 +28,6 @@ export class YahooFundamentalsProvider {
 
   constructor(concurrency = 6) {
     this.concurrency = concurrency;
-    // Suppress yahoo-finance2's survey notice and schema-validation noise.
-    try {
-      yahooFinance.suppressNotices?.(["yahooSurvey", "ripHistorical"]);
-    } catch {
-      // older versions don't have suppressNotices — safe to ignore
-    }
   }
 
   async getSupplementalMetrics(
@@ -52,9 +55,9 @@ export class YahooFundamentalsProvider {
     ticker: string,
   ): Promise<YahooSupplementalMetrics | null> {
     try {
-      const summary = await yahooFinance.quoteSummary(ticker, {
+      const summary = (await yahooFinance.quoteSummary(ticker, {
         modules: ["defaultKeyStatistics", "financialData"],
-      });
+      })) as YahooQuoteSummary;
 
       const evToEbitda = readNumber(
         summary.defaultKeyStatistics?.enterpriseToEbitda,
