@@ -139,7 +139,13 @@ function parseDowComponents(html: string): IndexConstituent[] {
  * symbol to the correct NSE India listing.
  */
 function parseNifty50Constituents(html: string): IndexConstituent[] {
-  const table = extractTableByNeedle(html, 'id="constituents"');
+  // The page has both `id="Constituents"` (the H2 section heading) and
+  // `id="constituents"` (on the <table> tag itself). Searching forward from
+  // the lowercase needle lands AFTER the table's opening `<table` token, so
+  // we'd skip past it and hit the next table ("List of replacements"). Use
+  // the section heading anchor instead, which is guaranteed to come before
+  // the table.
+  const table = extractTableByNeedle(html, 'id="Constituents"');
   const constituents = extractTableRows(table)
     .map(extractCells)
     .filter((cells) => cells.length >= 3)
@@ -166,7 +172,11 @@ function parseNifty50Constituents(html: string): IndexConstituent[] {
  * is already in Yahoo's `.BO` form, so we use it as-is.
  */
 function parseSensexConstituents(html: string): IndexConstituent[] {
-  const table = extractTableByNeedle(html, 'id="constituents"');
+  // Use the H2 section anchor (`id="Constituents"`) instead of the table's
+  // own lowercase `id="constituents"` — searching for the lowercase needle
+  // lands inside the table tag and `indexOf("<table", ...)` then jumps to
+  // the NEXT table ("Constituent removed" replacements list).
+  const table = extractTableByNeedle(html, 'id="Constituents"');
   const constituents = extractTableRows(table)
     .map(extractCells)
     .filter((cells) => cells.length >= 4)
