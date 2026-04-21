@@ -238,26 +238,3 @@ const YAHOO_BASE = "https://query2.finance.yahoo.com/v10/finance/quoteSummary";
 const YAHOO_MODULES = "price,summaryDetail,defaultKeyStatistics,financialData";
 const YAHOO_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-
-// eslint-disable-next-line @typescript-eslint/no-namespace
-declare global {
-  // Augment the class with the helper without re-declaring it inline.
-}
-
-// Attach helper as a class method via prototype to avoid restructuring
-// the existing class body; keeps the patch minimal.
-(YahooFundamentalsProvider.prototype as unknown as {
-  fetchQuoteSummary: (ticker: string) => Promise<YahooQuoteSummary | null>;
-}).fetchQuoteSummary = async function (
-  this: { ["fetchImpl"]: typeof fetch },
-  ticker: string,
-): Promise<YahooQuoteSummary | null> {
-  const url = `${YAHOO_BASE}/${encodeURIComponent(ticker)}?modules=${YAHOO_MODULES}`;
-  const res = await this.fetchImpl(url, {
-    headers: { "User-Agent": YAHOO_USER_AGENT, Accept: "application/json" },
-  });
-  if (!res.ok) return null;
-  const json = (await res.json()) as YahooQuoteSummaryResponse;
-  const result = json.quoteSummary?.result?.[0];
-  return result ?? null;
-};
