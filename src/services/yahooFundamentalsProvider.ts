@@ -78,13 +78,14 @@ export interface YahooSupplementalMetrics {
 
 export class YahooFundamentalsProvider {
   private readonly concurrency: number;
-  private readonly client: InstanceType<typeof YahooFinance>;
+  private readonly fetchImpl: typeof fetch;
 
-  constructor(concurrency = 6) {
+  constructor(
+    concurrency = 6,
+    fetchImpl: typeof fetch = (...args) => globalThis.fetch(...args),
+  ) {
     this.concurrency = concurrency;
-    this.client = new YahooFinance({
-      suppressNotices: ["yahooSurvey", "ripHistorical"],
-    });
+    this.fetchImpl = fetchImpl;
   }
 
   async getSupplementalMetrics(
@@ -112,14 +113,8 @@ export class YahooFundamentalsProvider {
     ticker: string,
   ): Promise<YahooSupplementalMetrics | null> {
     try {
-      const summary = (await this.client.quoteSummary(ticker, {
-        modules: [
-          "price",
-          "summaryDetail",
-          "defaultKeyStatistics",
-          "financialData",
-        ],
-      })) as YahooQuoteSummary;
+      const summary = await this.fetchQuoteSummary(ticker);
+      if (!summary) return null;
 
       const evToEbitda = readNumber(
         summary.defaultKeyStatistics?.enterpriseToEbitda,
