@@ -79,6 +79,7 @@ export interface YahooSupplementalMetrics {
 export class YahooFundamentalsProvider {
   private readonly concurrency: number;
   private readonly fetchImpl: typeof fetch;
+  private credentialsPromise: Promise<YahooCredentials | null> | null = null;
 
   constructor(
     concurrency = 6,
@@ -201,14 +202,73 @@ export class YahooFundamentalsProvider {
   private async fetchQuoteSummary(
     ticker: string,
   ): Promise<YahooQuoteSummary | null> {
-    const url = `${YAHOO_BASE}/${encodeURIComponent(ticker)}?modules=${YAHOO_MODULES}`;
-    const res = await this.fetchImpl(url, {
-      headers: { "User-Agent": YAHOO_USER_AGENT, Accept: "application/json" },
-    });
+    const creds = await this.getCredentials();
+    const crumbParam = creds?.crumb ? `&crumb=${encodeURIComponent(creds.crumb)}` : "";
+    const url = `${YAHOO_BASE}/${encodeURIComponent(ticker)}?modules=${YAHOO_MODULES}${crumbParam}`;
+    const headers: Record<string, string> = {
+      "User-Agent": YAHOO_USER_AGENT,
+      Accept: "application/json",
+    };
+    if (creds?.cookie) headers.Cookie = creds.cookie;
+
+    const res = await this.fetchImpl(url, { headers });
     if (!res.ok) return null;
     const json = (await res.json()) as YahooQuoteSummaryResponse;
     const result = json.quoteSummary?.result?.[0];
     return result ?? null;
+  }
+
+  /**
+   * Yahoo's quoteSummary endpoint started gating "deep" modules
+   * (financialData, defaultKeyStatistics) behind a session cookie + crumb.
+   * Without it, freeCashflow / EV-to-EBITDA come back missing or 401.
+   *
+   * The handshake:
+   *  1. GET https://fc.yahoo.com  → returns Set-Cookie: A1=…; A3=…
+   *  2. GET https://query2.finance.yahoo.com/v1/test/getcrumb with that
+   *     Cookie header → returns the crumb token in the response body.
+   *  3. Append &crumb=<token> + send Cookie on every quoteSummary call.
+   *
+   * Credentials are cached for the lifetime of this provider instance
+   * (one analysis run) so we only do the handshake once per request.
+   */
+  private getCredentials(): Promise<YahooCredentials | null> {
+    if (!this.credentialsPromise) {
+      this.credentialsPromise = this.handshake().catch((error) => {
+        console.warn("Yahoo cookie/crumb handshake failed:", error);
+        return null;
+      });
+    }
+    return this.credentialsPromise;
+  }
+
+  private async handshake(): Promise<YahooCredentials | null> {
+    // Step 1 — collect the session cookies from fc.yahoo.com.
+    // We use `redirect: "manual"` so Workers don't follow the EU consent
+    // 302 (which would lose the Set-Cookie headers).
+    const cookieRes = await this.fetchImpl("https://fc.yahoo.com/", {
+      headers: { "User-Agent": YAHOO_USER_AGENT },
+      redirect: "manual",
+    });
+    const cookie = extractCookie(cookieRes);
+    if (!cookie) return null;
+
+    // Step 2 — exchange the cookie for a crumb token.
+    const crumbRes = await this.fetchImpl(
+      "https://query2.finance.yahoo.com/v1/test/getcrumb",
+      {
+        headers: {
+          "User-Agent": YAHOO_USER_AGENT,
+          Cookie: cookie,
+          Accept: "text/plain",
+        },
+      },
+    );
+    if (!crumbRes.ok) return null;
+    const crumb = (await crumbRes.text()).trim();
+    if (!crumb || crumb.length > 64) return null; // sanity guard
+
+    return { cookie, crumb };
   }
 }
 
@@ -238,3 +298,32 @@ const YAHOO_BASE = "https://query2.finance.yahoo.com/v10/finance/quoteSummary";
 const YAHOO_MODULES = "price,summaryDetail,defaultKeyStatistics,financialData";
 const YAHOO_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+interface YahooCredentials {
+  cookie: string;
+  crumb: string;
+}
+
+/**
+ * Pull a `cookie` request-header value from a response's Set-Cookie headers.
+ * We only keep the `name=value` portion (no Path/Expires/etc.) and join with
+ * `; ` per RFC 6265. Yahoo's important cookies are A1 / A3 / GUC.
+ */
+function extractCookie(response: Response): string | null {
+  const headers = response.headers as Headers & {
+    getSetCookie?: () => string[];
+  };
+  const setCookies: string[] = headers.getSetCookie
+    ? headers.getSetCookie()
+    : (() => {
+        const single = response.headers.get("set-cookie");
+        return single ? [single] : [];
+      })();
+
+  const pairs: string[] = [];
+  for (const raw of setCookies) {
+    const firstPair = raw.split(";")[0]?.trim();
+    if (firstPair && firstPair.includes("=")) pairs.push(firstPair);
+  }
+  return pairs.length > 0 ? pairs.join("; ") : null;
+}
