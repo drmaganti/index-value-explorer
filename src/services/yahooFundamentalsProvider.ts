@@ -197,6 +197,19 @@ export class YahooFundamentalsProvider {
       return null;
     }
   }
+
+  private async fetchQuoteSummary(
+    ticker: string,
+  ): Promise<YahooQuoteSummary | null> {
+    const url = `${YAHOO_BASE}/${encodeURIComponent(ticker)}?modules=${YAHOO_MODULES}`;
+    const res = await this.fetchImpl(url, {
+      headers: { "User-Agent": YAHOO_USER_AGENT, Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as YahooQuoteSummaryResponse;
+    const result = json.quoteSummary?.result?.[0];
+    return result ?? null;
+  }
 }
 
 function readNumber(value: unknown): number | undefined {
