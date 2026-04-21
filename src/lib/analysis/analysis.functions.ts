@@ -115,6 +115,16 @@ function mergeFundamentals(
         above200dma: fh.above200dma ?? yh.above200dma,
         evToEbitda: fh.evToEbitda ?? yh.evToEbitda,
         freeCashFlowB: fh.freeCashFlowB ?? yh.freeCashFlowB,
+        forwardPE: fh.forwardPE ?? yh.forwardPE,
+        trailingPE: fh.trailingPE ?? yh.trailingPE,
+        priceToBook: fh.priceToBook ?? yh.priceToBook,
+        revenueGrowthPct: fh.revenueGrowthPct ?? yh.revenueGrowthPct,
+        earningsGrowthPct: fh.earningsGrowthPct ?? yh.earningsGrowthPct,
+        operatingMarginPct: fh.operatingMarginPct ?? yh.operatingMarginPct,
+        grossMarginPct: fh.grossMarginPct ?? yh.grossMarginPct,
+        returnOnEquityPct: fh.returnOnEquityPct ?? yh.returnOnEquityPct,
+        debtToEquity: fh.debtToEquity ?? yh.debtToEquity,
+        beta: fh.beta ?? yh.beta,
       });
       continue;
     }
@@ -135,6 +145,16 @@ function mergeFundamentals(
       above200dma: yh!.above200dma,
       evToEbitda: yh!.evToEbitda,
       freeCashFlowB: yh!.freeCashFlowB,
+      forwardPE: yh!.forwardPE,
+      trailingPE: yh!.trailingPE,
+      priceToBook: yh!.priceToBook,
+      revenueGrowthPct: yh!.revenueGrowthPct,
+      earningsGrowthPct: yh!.earningsGrowthPct,
+      operatingMarginPct: yh!.operatingMarginPct,
+      grossMarginPct: yh!.grossMarginPct,
+      returnOnEquityPct: yh!.returnOnEquityPct,
+      debtToEquity: yh!.debtToEquity,
+      beta: yh!.beta,
     });
   }
 

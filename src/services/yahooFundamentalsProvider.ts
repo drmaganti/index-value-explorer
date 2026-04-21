@@ -11,12 +11,28 @@ interface YahooQuoteSummary {
     fiftyTwoWeekHigh?: number | null;
     fiftyTwoWeekLow?: number | null;
     twoHundredDayAverage?: number | null;
+    forwardPE?: number | null;
+    trailingPE?: number | null;
+    priceToSalesTrailing12Months?: number | null;
+    beta?: number | null;
   };
   defaultKeyStatistics?: {
     enterpriseToEbitda?: number | null;
+    forwardPE?: number | null;
+    trailingEps?: number | null;
+    priceToBook?: number | null;
+    beta?: number | null;
+    earningsQuarterlyGrowth?: number | null;
   };
   financialData?: {
     freeCashflow?: number | null;
+    operatingMargins?: number | null;
+    grossMargins?: number | null;
+    profitMargins?: number | null;
+    returnOnEquity?: number | null;
+    revenueGrowth?: number | null;
+    earningsGrowth?: number | null;
+    debtToEquity?: number | null;
   };
 }
 
@@ -40,6 +56,16 @@ export interface YahooSupplementalMetrics {
   above200dma?: boolean;
   evToEbitda?: number;
   freeCashFlowB?: number; // billions USD
+  forwardPE?: number;
+  trailingPE?: number;
+  priceToBook?: number;
+  revenueGrowthPct?: number;
+  earningsGrowthPct?: number;
+  operatingMarginPct?: number;
+  grossMarginPct?: number;
+  returnOnEquityPct?: number;
+  debtToEquity?: number;
+  beta?: number;
 }
 
 export class YahooFundamentalsProvider {
@@ -101,6 +127,41 @@ export class YahooFundamentalsProvider {
         summary.summaryDetail?.twoHundredDayAverage,
       );
 
+      const forwardPE = readNumber(
+        summary.summaryDetail?.forwardPE ??
+          summary.defaultKeyStatistics?.forwardPE,
+      );
+      const trailingPE = readNumber(summary.summaryDetail?.trailingPE);
+      const priceToBook = readNumber(summary.defaultKeyStatistics?.priceToBook);
+      const beta = readNumber(
+        summary.summaryDetail?.beta ?? summary.defaultKeyStatistics?.beta,
+      );
+
+      // Yahoo returns margins/growth/ROE as decimals (0.34 = 34%); convert to %.
+      const operatingMarginPct = pctFromDecimal(
+        readNumber(summary.financialData?.operatingMargins),
+      );
+      const grossMarginPct = pctFromDecimal(
+        readNumber(summary.financialData?.grossMargins),
+      );
+      const returnOnEquityPct = pctFromDecimal(
+        readNumber(summary.financialData?.returnOnEquity),
+      );
+      const revenueGrowthPct = pctFromDecimal(
+        readNumber(summary.financialData?.revenueGrowth),
+      );
+      const earningsGrowthPct = pctFromDecimal(
+        readNumber(
+          summary.financialData?.earningsGrowth ??
+            summary.defaultKeyStatistics?.earningsQuarterlyGrowth,
+        ),
+      );
+
+      // Yahoo's debtToEquity is reported as a percentage (e.g. 152 = 1.52).
+      const debtToEquityRaw = readNumber(summary.financialData?.debtToEquity);
+      const debtToEquity =
+        debtToEquityRaw != null ? debtToEquityRaw / 100 : undefined;
+
       return {
         ticker,
         marketCapB: marketCapRaw != null ? marketCapRaw / 1_000_000_000 : undefined,
@@ -117,6 +178,16 @@ export class YahooFundamentalsProvider {
             : undefined,
         evToEbitda,
         freeCashFlowB: fcfRaw != null ? fcfRaw / 1_000_000_000 : undefined,
+        forwardPE,
+        trailingPE,
+        priceToBook,
+        revenueGrowthPct,
+        earningsGrowthPct,
+        operatingMarginPct,
+        grossMarginPct,
+        returnOnEquityPct,
+        debtToEquity,
+        beta,
       };
     } catch (error) {
       console.warn(`Yahoo supplemental metrics failed for ${ticker}:`, error);
@@ -136,4 +207,13 @@ function readNumber(value: unknown): number | undefined {
     if (typeof raw === "number" && Number.isFinite(raw)) return raw;
   }
   return undefined;
+}
+
+/**
+ * Yahoo reports margins/growth/ROE as decimals (0.34 = 34%). Convert to a
+ * whole-number percent to match the convention used elsewhere in the engine.
+ */
+function pctFromDecimal(value: number | undefined): number | undefined {
+  if (value == null) return undefined;
+  return value * 100;
 }
