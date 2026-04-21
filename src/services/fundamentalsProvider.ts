@@ -1,4 +1,5 @@
 import type { StockMetrics } from "./types";
+import { normalizeTickerForProvider } from "./symbolNormalization";
 
 /**
  * Fundamentals provider — returns metric snapshots for a list of tickers.
@@ -31,7 +32,9 @@ export class FinnhubFundamentalsProvider implements FundamentalsProvider {
   ) {}
 
   async getMetrics(tickers: string[]): Promise<StockMetrics[]> {
-    const normalizedTickers = [...new Set(tickers.map((ticker) => ticker.trim().toUpperCase()).filter(Boolean))];
+    const normalizedTickers = [
+      ...new Set(tickers.map(normalizeTickerForProvider).filter(Boolean)),
+    ];
     const metrics: StockMetrics[] = [];
 
     for (let index = 0; index < normalizedTickers.length; index += FINNHUB_REQUEST_BATCH_SIZE) {

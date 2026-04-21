@@ -38,7 +38,8 @@ export function runScoringEngine(input: EngineInput): EngineResult {
         reasons: [
           {
             code: "MISSING_METRICS",
-            message: "No fundamentals available for this stock.",
+            message:
+              "No data returned from market-data providers — symbol may be unsupported on the free tier.",
           },
         ],
       });

@@ -22,10 +22,13 @@ const fmt = (n: number, digits = 1) => n.toFixed(digits);
 export const filterMissingMetrics: Filter = (m) => {
   // We require enough data to make a meaningful decision. If the core
   // pullback + market cap fields are absent, the stock is unscreenable.
-  if (m.marketCapB == null || m.pricePctFrom52WHigh == null) {
+  const missing: string[] = [];
+  if (m.marketCapB == null) missing.push("market cap");
+  if (m.pricePctFrom52WHigh == null) missing.push("52-week price history");
+  if (missing.length > 0) {
     return {
       code: "MISSING_METRICS",
-      message: "Insufficient data to screen this stock.",
+      message: `Provider returned a partial record — missing ${missing.join(" and ")}.`,
     };
   }
   return null;
