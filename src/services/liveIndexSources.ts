@@ -172,7 +172,11 @@ function parseNifty50Constituents(html: string): IndexConstituent[] {
  * is already in Yahoo's `.BO` form, so we use it as-is.
  */
 function parseSensexConstituents(html: string): IndexConstituent[] {
-  const table = extractTableByNeedle(html, 'id="constituents"');
+  // Use the H2 section anchor (`id="Constituents"`) instead of the table's
+  // own lowercase `id="constituents"` — searching for the lowercase needle
+  // lands inside the table tag and `indexOf("<table", ...)` then jumps to
+  // the NEXT table ("Constituent removed" replacements list).
+  const table = extractTableByNeedle(html, 'id="Constituents"');
   const constituents = extractTableRows(table)
     .map(extractCells)
     .filter((cells) => cells.length >= 4)
