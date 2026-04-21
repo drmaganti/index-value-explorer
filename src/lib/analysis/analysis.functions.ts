@@ -50,7 +50,14 @@ export const runAnalysis = createServerFn({ method: "POST" })
     const yahooProvider = new YahooFundamentalsProvider();
 
     const constituents = await indexProvider.getConstituents(request.symbol);
-    const tickers = constituentsToTickers(constituents);
+    // Worker request budget is ~30s. To stay well within it, cap the
+    // universe to the top-weighted constituents (covers the bulk of the
+    // index by market cap and avoids upstream timeouts on large ETFs).
+    const MAX_TICKERS_PER_RUN = 60;
+    const trimmedConstituents = [...constituents]
+      .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0))
+      .slice(0, MAX_TICKERS_PER_RUN);
+    const tickers = constituentsToTickers(trimmedConstituents);
     // Use allSettled so a Yahoo (or Finnhub) failure doesn't kill the whole run.
     const [metricsResult, supplementalResult] = await Promise.allSettled([
       fundamentalsProvider.getMetrics(tickers),
@@ -70,7 +77,7 @@ export const runAnalysis = createServerFn({ method: "POST" })
     const enrichedMetrics = mergeFundamentals(tickers, metrics, supplemental);
 
     const engineResult = runScoringEngine({
-      constituents,
+      constituents: trimmedConstituents,
       metrics: enrichedMetrics,
       filters: toFilterConfig(request),
       scoring: toScoringConfig(request),
