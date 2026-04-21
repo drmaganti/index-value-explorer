@@ -51,10 +51,21 @@ export const runAnalysis = createServerFn({ method: "POST" })
 
     const constituents = await indexProvider.getConstituents(request.symbol);
     const tickers = constituentsToTickers(constituents);
-    const [metrics, supplemental] = await Promise.all([
+    // Use allSettled so a Yahoo (or Finnhub) failure doesn't kill the whole run.
+    const [metricsResult, supplementalResult] = await Promise.allSettled([
       fundamentalsProvider.getMetrics(tickers),
       yahooProvider.getSupplementalMetrics(tickers),
     ]);
+    const metrics =
+      metricsResult.status === "fulfilled" ? metricsResult.value : [];
+    const supplemental =
+      supplementalResult.status === "fulfilled" ? supplementalResult.value : [];
+    if (metricsResult.status === "rejected") {
+      console.error("Finnhub provider failed:", metricsResult.reason);
+    }
+    if (supplementalResult.status === "rejected") {
+      console.warn("Yahoo provider failed:", supplementalResult.reason);
+    }
 
     const enrichedMetrics = mergeFundamentals(tickers, metrics, supplemental);
 
