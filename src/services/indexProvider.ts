@@ -4,9 +4,9 @@ import { fetchLiveIndexConstituents } from "./liveIndexSources";
 /**
  * Index provider — returns the constituents for a given index symbol.
  *
- * This is the seam where a real provider (e.g. an ETF holdings API) will
- * plug in. The engine never calls a network directly; it depends only on
- * the IndexProvider interface.
+ * The engine never calls a network directly; it depends only on the
+ * IndexProvider interface. Live constituents are sourced via Wikipedia
+ * with a Finnhub ETF-holdings fallback.
  */
 export interface IndexProvider {
   getConstituents(symbol: string): Promise<IndexConstituent[]>;

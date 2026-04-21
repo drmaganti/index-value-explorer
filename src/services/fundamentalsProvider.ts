@@ -3,9 +3,7 @@ import type { StockMetrics } from "./types";
 /**
  * Fundamentals provider — returns metric snapshots for a list of tickers.
  *
- * Pluggable: real implementations will hit a market data API. The mock
- * implementation below ships hand-tuned, intentionally varied payloads
- * so the screening engine produces interesting filtering and ranking.
+ * Pluggable: implementations hit a market data API (Finnhub today).
  */
 export interface FundamentalsProvider {
   getMetrics(tickers: string[]): Promise<StockMetrics[]>;
