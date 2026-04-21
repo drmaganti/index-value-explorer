@@ -50,6 +50,12 @@ export const runAnalysis = createServerFn({ method: "POST" })
     const yahooProvider = new YahooFundamentalsProvider();
 
     const constituents = await indexProvider.getConstituents(request.symbol);
+    // Indian exchanges (NSE `.NS`, BSE `.BO`) are not on Finnhub's free
+    // tier — calling it just burns request budget and returns nothing.
+    // Detect this once per run so we can skip the Finnhub hop entirely.
+    const isYahooOnlyUniverse = constituents.some((c) =>
+      /\.(NS|BO)$/i.test(c.ticker),
+    );
     // Worker request budget is ~30s. To stay well within it, cap the
     // universe to the top-weighted constituents (covers the bulk of the
     // index by market cap and avoids upstream timeouts on large ETFs).
@@ -60,7 +66,9 @@ export const runAnalysis = createServerFn({ method: "POST" })
     const tickers = constituentsToTickers(trimmedConstituents);
     // Use allSettled so a Yahoo (or Finnhub) failure doesn't kill the whole run.
     const [metricsResult, supplementalResult] = await Promise.allSettled([
-      fundamentalsProvider.getMetrics(tickers),
+      isYahooOnlyUniverse
+        ? Promise.resolve([] as StockMetrics[])
+        : fundamentalsProvider.getMetrics(tickers),
       yahooProvider.getSupplementalMetrics(tickers),
     ]);
     const metrics =
