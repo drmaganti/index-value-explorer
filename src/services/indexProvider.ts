@@ -19,6 +19,16 @@ interface FinnhubEtfHoldingsResponse {
   }>;
 }
 
+interface FinnhubIndexConstituentsResponse {
+  constituents?: string[];
+}
+
+const ETF_TO_INDEX_SYMBOL: Record<string, string> = {
+  QQQ: "^NDX",
+  SPY: "^GSPC",
+  DIA: "^DJI",
+};
+
 export class FinnhubIndexProvider implements IndexProvider {
   constructor(
     private readonly apiKey: string,
@@ -27,23 +37,46 @@ export class FinnhubIndexProvider implements IndexProvider {
 
   async getConstituents(symbol: string): Promise<IndexConstituent[]> {
     const normalizedSymbol = symbol.trim().toUpperCase();
+
+    const mappedIndexSymbol = ETF_TO_INDEX_SYMBOL[normalizedSymbol];
+    if (mappedIndexSymbol) {
+      const response = await this.fetchImpl(
+        `https://finnhub.io/api/v1/index/constituents?symbol=${encodeURIComponent(mappedIndexSymbol)}&token=${encodeURIComponent(this.apiKey)}`,
+      );
+
+      if (!response.ok) {
+        throw new Error(`Provider failure while loading index constituents (${response.status}).`);
+      }
+
+      const payload = await parseJsonResponse<FinnhubIndexConstituentsResponse>(
+        response,
+        "index constituents",
+      );
+      const constituents = (payload.constituents ?? [])
+        .map((ticker) => ticker.trim().toUpperCase())
+        .filter(Boolean)
+        .map((ticker) => ({
+          ticker,
+          name: ticker,
+          sector: "Unknown",
+        }));
+
+      if (constituents.length === 0) {
+        throw new Error(`No constituents were available for ${normalizedSymbol}.`);
+      }
+
+      return constituents;
+    }
+
     const response = await this.fetchImpl(
       `https://finnhub.io/api/v1/etf/holdings?symbol=${encodeURIComponent(normalizedSymbol)}&token=${encodeURIComponent(this.apiKey)}`,
     );
-
-    if (response.status === 403) {
-      const fallback = MOCK_CONSTITUENTS[normalizedSymbol];
-      if (fallback) {
-        return [...fallback];
-      }
-      throw new Error(`Provider failure while loading ETF holdings (${response.status}).`);
-    }
 
     if (!response.ok) {
       throw new Error(`Provider failure while loading ETF holdings (${response.status}).`);
     }
 
-    const payload = await parseJsonResponse<FinnhubEtfHoldingsResponse>(response);
+    const payload = await parseJsonResponse<FinnhubEtfHoldingsResponse>(response, "ETF holdings");
     const constituents = (payload.holdings ?? [])
       .map((holding) => ({
         ticker: holding.symbol?.trim().toUpperCase() ?? "",
@@ -66,18 +99,18 @@ export class FinnhubIndexProvider implements IndexProvider {
   }
 }
 
-async function parseJsonResponse<T>(response: Response): Promise<T> {
+async function parseJsonResponse<T>(response: Response, label: string): Promise<T> {
   const text = await response.text();
   const trimmed = text.trim();
 
   if (trimmed.startsWith("<!DOCTYPE") || trimmed.startsWith("<html")) {
-    throw new Error("Provider failure while loading ETF holdings.");
+    throw new Error(`Provider failure while loading ${label}.`);
   }
 
   try {
     return JSON.parse(text) as T;
   } catch {
-    throw new Error("Provider failure while loading ETF holdings.");
+    throw new Error(`Provider failure while loading ${label}.`);
   }
 }
 
