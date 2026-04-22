@@ -80,6 +80,7 @@ export class YahooFundamentalsProvider {
   private readonly concurrency: number;
   private readonly fetchImpl: typeof fetch;
   private credentialsPromise: Promise<YahooCredentials | null> | null = null;
+  private quoteSummaryDisabledForRun = false;
 
   constructor(
     concurrency = 6,
@@ -96,6 +97,9 @@ export class YahooFundamentalsProvider {
       ...new Set(tickers.map(normalizeTickerForProvider).filter(Boolean)),
     ];
     const results: YahooSupplementalMetrics[] = [];
+    let quoteSummaryHits = 0;
+    let v7FallbackHits = 0;
+    let misses = 0;
 
     for (let i = 0; i < normalized.length; i += this.concurrency) {
       const batch = normalized.slice(i, i + this.concurrency);
@@ -103,19 +107,41 @@ export class YahooFundamentalsProvider {
         batch.map((ticker) => this.getOne(ticker)),
       );
       for (const entry of batchResults) {
-        if (entry) results.push(entry);
+        if (!entry) {
+          misses++;
+          continue;
+        }
+        if (entry._source === "v7") v7FallbackHits++;
+        else quoteSummaryHits++;
+        // Strip internal marker before returning.
+        const { _source, ...clean } = entry;
+        void _source;
+        results.push(clean);
       }
     }
+    console.log(
+      `[Yahoo] tickers=${normalized.length} quoteSummary=${quoteSummaryHits} v7Fallback=${v7FallbackHits} misses=${misses}`,
+    );
 
     return results;
   }
 
   private async getOne(
     ticker: string,
-  ): Promise<YahooSupplementalMetrics | null> {
+  ): Promise<(YahooSupplementalMetrics & { _source: "qs" | "v7" }) | null> {
     try {
-      const summary = await this.fetchQuoteSummary(ticker);
-      if (!summary) return null;
+      let summary: YahooQuoteSummary | null = null;
+      if (!this.quoteSummaryDisabledForRun) {
+        summary = await this.fetchQuoteSummary(ticker);
+      }
+      if (!summary) {
+        // Fall back to the unauthenticated v7 quote endpoint so at least
+        // price + market cap + 52-week range come through. This is critical
+        // for Indian (.NS / .BO) tickers, which Yahoo often refuses to serve
+        // via quoteSummary from edge IPs (401 / "Invalid Crumb").
+        const fallback = await this.fetchV7Quote(ticker);
+        return fallback ? { ...fallback, _source: "v7" } : null;
+      }
 
       const evToEbitda = readNumber(
         summary.defaultKeyStatistics?.enterpriseToEbitda,
@@ -192,6 +218,7 @@ export class YahooFundamentalsProvider {
         returnOnEquityPct,
         debtToEquity,
         beta,
+        _source: "qs",
       };
     } catch (error) {
       console.warn(`Yahoo supplemental metrics failed for ${ticker}:`, error);
@@ -212,10 +239,76 @@ export class YahooFundamentalsProvider {
     if (creds?.cookie) headers.Cookie = creds.cookie;
 
     const res = await this.fetchImpl(url, { headers });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      // 401 = Invalid Crumb (session rejected). 429 = rate-limited.
+      // In either case stop hammering quoteSummary for the rest of the run
+      // and let v7 fallback handle remaining tickers.
+      if (res.status === 401 || res.status === 429) {
+        if (!this.quoteSummaryDisabledForRun) {
+          console.warn(
+            `[Yahoo] quoteSummary returned ${res.status} for ${ticker} — disabling for the rest of this run, falling back to v7.`,
+          );
+        }
+        this.quoteSummaryDisabledForRun = true;
+      }
+      return null;
+    }
     const json = (await res.json()) as YahooQuoteSummaryResponse;
     const result = json.quoteSummary?.result?.[0];
     return result ?? null;
+  }
+
+  /**
+   * Fallback path — Yahoo's v7 quote endpoint is unauthenticated and exposes
+   * the bare minimum we need to get a ticker through the screen: price,
+   * market cap, 52-week range, and 200-day moving average. Margin/growth/
+   * ROE/FCF are absent here, so these tickers will be missing the deeper
+   * factors but at least won't be silently dropped.
+   */
+  private async fetchV7Quote(
+    ticker: string,
+  ): Promise<YahooSupplementalMetrics | null> {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(ticker)}`;
+    const res = await this.fetchImpl(url, {
+      headers: {
+        "User-Agent": YAHOO_USER_AGENT,
+        Accept: "application/json",
+      },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json().catch(() => null)) as
+      | { quoteResponse?: { result?: Array<Record<string, unknown>> } }
+      | null;
+    const row = json?.quoteResponse?.result?.[0];
+    if (!row) return null;
+
+    const num = (v: unknown): number | undefined =>
+      typeof v === "number" && Number.isFinite(v) ? v : undefined;
+
+    const currentPrice = num(row.regularMarketPrice);
+    const high52Week = num(row.fiftyTwoWeekHigh);
+    const low52Week = num(row.fiftyTwoWeekLow);
+    const twoHundredDayAvg = num(row.twoHundredDayAverage);
+    const marketCap = num(row.marketCap);
+
+    return {
+      ticker,
+      marketCapB: marketCap != null ? marketCap / 1_000_000_000 : undefined,
+      currentPrice,
+      high52Week,
+      low52Week,
+      pricePctFrom52WHigh:
+        currentPrice != null && high52Week != null && high52Week > 0
+          ? ((currentPrice - high52Week) / high52Week) * 100
+          : undefined,
+      above200dma:
+        currentPrice != null && twoHundredDayAvg != null
+          ? currentPrice >= twoHundredDayAvg
+          : undefined,
+      forwardPE: num(row.forwardPE),
+      trailingPE: num(row.trailingPE),
+      priceToBook: num(row.priceToBook),
+    };
   }
 
   /**

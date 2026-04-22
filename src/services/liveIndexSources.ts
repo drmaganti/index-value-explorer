@@ -157,7 +157,15 @@ function parseNifty50Constituents(html: string): IndexConstituent[] {
         sector: extractText(cells[2]) || "Unknown",
       };
     })
-    .filter((entry) => entry.ticker && !entry.ticker.startsWith("SYMBOL"));
+    .filter(
+      (entry) =>
+        entry.ticker &&
+        // Header row leaks through as "Symbol.NS" — strip it. Also skip any
+        // row whose symbol contains whitespace (can happen with malformed
+        // markup where multiple cells collapse).
+        !/^symbol\.ns$/i.test(entry.ticker) &&
+        !/\s/.test(entry.ticker),
+    );
 
   if (constituents.length === 0) {
     throw new Error("No constituents were available for NIFTY.");
