@@ -12,6 +12,7 @@ import { getLastReport } from "../lib/analysis/reportStore";
 import { runAnalysis } from "../lib/analysis/analysis.functions";
 import { DEFAULT_SETTINGS } from "../lib/analysis/defaults";
 import type { AnalysisReport, RankedCandidate } from "../lib/analysis/types";
+import { isIndianIndex } from "../lib/analysis/marketRegion";
 
 export const Route = createFileRoute("/results")({
   head: () => ({
