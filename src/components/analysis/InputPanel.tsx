@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AlertCircle, Info, Play } from "lucide-react";
 import type { AnalysisSettings } from "@/lib/analysis/types";
@@ -10,10 +10,6 @@ import { useAnalysisRun } from "@/hooks/useAnalysisRun";
 import { AdvancedSettingsAccordion } from "./AdvancedSettingsAccordion";
 import { ProgressPanel } from "./ProgressPanel";
 import { ErrorState } from "@/components/common/ErrorState";
-import {
-  defaultMarketCapBForRegion,
-  isIndianIndex,
-} from "@/lib/analysis/marketRegion";
 
 export function InputPanel() {
   const navigate = useNavigate();
@@ -22,20 +18,6 @@ export function InputPanel() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitted, setSubmitted] = useState(false);
 
-  // When the user switches between US and Indian indices, rescale the
-  // market-cap floor so they don't accidentally run with a $25B floor on a
-  // ₹-denominated universe (which would be ~₹2,000 Cr — way too low).
-  const prevRegionRef = useRef<"us" | "in">(isIndianIndex(symbol) ? "in" : "us");
-  useEffect(() => {
-    const region = isIndianIndex(symbol) ? "in" : "us";
-    if (region !== prevRegionRef.current) {
-      setSettings((prev) => ({
-        ...prev,
-        minMarketCapB: defaultMarketCapBForRegion(region, prev.mode),
-      }));
-      prevRegionRef.current = region;
-    }
-  }, [symbol]);
 
   const { status, steps, errorCode, errorMessage, start, cancel, reset } = useAnalysisRun(
     (report) => {
@@ -130,8 +112,7 @@ export function InputPanel() {
               </p>
             )}
             <p id="symbol-helper" className="mt-2 text-xs text-muted-foreground">
-              US: QQQ, SPY, DIA. India: NIFTY, SENSEX. Indian indices report market cap
-              in INR — adjust the market-cap floor accordingly (₹1B ≠ $1B).
+              Choose a US index ETF to screen its underlying constituents.
             </p>
           </div>
 
@@ -200,7 +181,7 @@ function getErrorContent(errorCode: string | null, fallbackMessage: string | nul
         title: "Symbol not supported yet",
         description:
           fallbackMessage ??
-          "This demo currently supports QQQ, SPY, DIA, NIFTY, and SENSEX only.",
+          "This demo currently supports QQQ, SPY, and DIA only.",
         details: ["Try one of the supported ETF symbols.", "Use Quick pick to avoid formatting mistakes."],
       };
     case "NO_CONSTITUENTS":

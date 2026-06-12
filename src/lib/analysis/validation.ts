@@ -5,9 +5,9 @@ const symbolSchema = z
   .string()
   .trim()
   .min(1, { message: "Enter an index symbol to analyze." })
-  .max(8, { message: "Symbol looks too long — try QQQ, SPY, DIA, NIFTY, or SENSEX." })
+  .max(8, { message: "Symbol looks too long — try QQQ, SPY, or DIA." })
   .regex(/^[A-Z][A-Z0-9.\-]*$/i, {
-    message: "Use letters only — e.g. QQQ, SPY, DIA, NIFTY, SENSEX.",
+    message: "Use letters only — e.g. QQQ, SPY, DIA.",
   })
   .refine(
     (v) => (SUPPORTED_SYMBOLS as readonly string[]).includes(v.toUpperCase()),
