@@ -4,19 +4,12 @@ import type { AnalysisSettings } from "@/lib/analysis/types";
 import { MODE_PRESETS } from "@/lib/analysis/defaults";
 import type { FieldErrors } from "@/lib/analysis/validation";
 import { NumberField, Segmented, Toggle } from "@/components/common/FormPrimitives";
-import {
-  billionsToCrore,
-  croreToBillions,
-  defaultMarketCapBForRegion,
-  isIndianIndex,
-} from "@/lib/analysis/marketRegion";
 
 interface Props {
   settings: AnalysisSettings;
   onChange: (next: AnalysisSettings) => void;
   errors: FieldErrors;
   disabled?: boolean;
-  symbol: string;
 }
 
 const MODE_OPTIONS = [
@@ -30,10 +23,8 @@ export function AdvancedSettingsAccordion({
   onChange,
   errors,
   disabled,
-  symbol,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const isIndian = isIndianIndex(symbol);
 
   const update = <K extends keyof AnalysisSettings>(key: K, value: AnalysisSettings[K]) => {
     onChange({ ...settings, [key]: value });
@@ -44,26 +35,17 @@ export function AdvancedSettingsAccordion({
     onChange({
       ...settings,
       ...preset,
-      // Override the cap floor with a region-appropriate default so switching
-      // mode while a NIFTY/SENSEX symbol is selected stays in ₹ Cr territory.
-      minMarketCapB: defaultMarketCapBForRegion(isIndian ? "in" : "us", mode),
       mode,
     });
   };
 
   const hasErrors = Object.keys(errors).some((k) => k !== "symbol");
 
-  // Market-cap field display values (₹ Cr for Indian indices, $ B otherwise).
-  const capDisplayValue = isIndian
-    ? Math.round(billionsToCrore(settings.minMarketCapB))
-    : settings.minMarketCapB;
-  const capSuffix = isIndian ? "Cr ₹" : "B USD";
-  const capHint = isIndian
-    ? "Indian large-cap floor. ₹50,000 Cr+ is typical blue-chip territory."
-    : "Excludes smaller, less liquid names.";
-  const capMin = isIndian ? 100 : 1; // ₹100 Cr ≈ $12M
-  const capStep = isIndian ? 1000 : 1;
-  const capLabel = isIndian ? "Min market cap (₹ Cr)" : "Min market cap";
+  const capSuffix = "B USD";
+  const capHint = "Excludes smaller, less liquid names.";
+  const capMin = 1;
+  const capStep = 1;
+  const capLabel = "Min market cap";
 
   return (
     <div
@@ -116,13 +98,8 @@ export function AdvancedSettingsAccordion({
               id="minMarketCap"
               label={capLabel}
               suffix={capSuffix}
-              value={capDisplayValue}
-              onChange={(v) =>
-                update(
-                  "minMarketCapB",
-                  isIndian ? croreToBillions(v) : v,
-                )
-              }
+              value={settings.minMarketCapB}
+              onChange={(v) => update("minMarketCapB", v)}
               hint={capHint}
               error={errors.minMarketCapB}
               min={capMin}

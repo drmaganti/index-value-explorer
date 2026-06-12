@@ -13,8 +13,6 @@ const WIKIPEDIA_PAGE_BY_SYMBOL: Partial<Record<string, string>> = {
   QQQ: "Nasdaq-100",
   SPY: "List_of_S&P_500_companies",
   DIA: "Dow_Jones_Industrial_Average",
-  NIFTY: "NIFTY_50",
-  SENSEX: "BSE_SENSEX",
 };
 
 export async function fetchLiveIndexConstituents(
@@ -37,10 +35,6 @@ export async function fetchLiveIndexConstituents(
       return parseSp500Constituents(html);
     case "DIA":
       return parseDowComponents(html);
-    case "NIFTY":
-      return parseNifty50Constituents(html);
-    case "SENSEX":
-      return parseSensexConstituents(html);
     default:
       return null;
   }
@@ -133,80 +127,6 @@ function parseDowComponents(html: string): IndexConstituent[] {
   return constituents;
 }
 
-/**
- * NIFTY 50 — table columns: Company name | Symbol (e.g. ADANIENT) |
- * Sector | Date added. We append `.NS` so Yahoo Finance can resolve the
- * symbol to the correct NSE India listing.
- */
-function parseNifty50Constituents(html: string): IndexConstituent[] {
-  // The page has both `id="Constituents"` (the H2 section heading) and
-  // `id="constituents"` (on the <table> tag itself). Searching forward from
-  // the lowercase needle lands AFTER the table's opening `<table` token, so
-  // we'd skip past it and hit the next table ("List of replacements"). Use
-  // the section heading anchor instead, which is guaranteed to come before
-  // the table.
-  const table = extractTableByNeedle(html, 'id="Constituents"');
-  const constituents = extractTableRows(table)
-    .map(extractCells)
-    .filter((cells) => cells.length >= 3)
-    .map((cells) => {
-      const baseSymbol = extractText(cells[1]);
-      return {
-        name: extractText(cells[0]),
-        ticker: baseSymbol ? `${baseSymbol}.NS` : "",
-        sector: extractText(cells[2]) || "Unknown",
-      };
-    })
-    .filter(
-      (entry) =>
-        entry.ticker &&
-        // Header row leaks through as "Symbol.NS" — strip it. Also skip any
-        // row whose symbol contains whitespace (can happen with malformed
-        // markup where multiple cells collapse).
-        !/^symbol\.ns$/i.test(entry.ticker) &&
-        !/\s/.test(entry.ticker),
-    );
-
-  if (constituents.length === 0) {
-    throw new Error("No constituents were available for NIFTY.");
-  }
-
-  return constituents;
-}
-
-/**
- * BSE SENSEX — table columns: Company | Symbol (already `.BO`) |
- * Ticker (BSE numeric code) | Industry | Entry date. The Symbol column
- * is already in Yahoo's `.BO` form, so we use it as-is.
- */
-function parseSensexConstituents(html: string): IndexConstituent[] {
-  // Use the H2 section anchor (`id="Constituents"`) instead of the table's
-  // own lowercase `id="constituents"` — searching for the lowercase needle
-  // lands inside the table tag and `indexOf("<table", ...)` then jumps to
-  // the NEXT table ("Constituent removed" replacements list).
-  const table = extractTableByNeedle(html, 'id="Constituents"');
-  const constituents = extractTableRows(table)
-    .map(extractCells)
-    .filter((cells) => cells.length >= 4)
-    .map((cells) => ({
-      name: extractText(cells[0]),
-      ticker: extractText(cells[1]).toUpperCase(),
-      sector: extractText(cells[3]) || "Unknown",
-    }))
-    .filter(
-      (entry) =>
-        entry.ticker &&
-        entry.ticker !== "SYMBOL" &&
-        // Real rows look like ADANIPORTS.BO; header row would be "Symbol".
-        entry.ticker.includes("."),
-    );
-
-  if (constituents.length === 0) {
-    throw new Error("No constituents were available for SENSEX.");
-  }
-
-  return constituents;
-}
 
 function extractTableByNeedle(html: string, needle: string): string {
   const sectionStart = html.indexOf(needle);

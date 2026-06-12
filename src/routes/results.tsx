@@ -12,7 +12,6 @@ import { getLastReport } from "../lib/analysis/reportStore";
 import { runAnalysis } from "../lib/analysis/analysis.functions";
 import { DEFAULT_SETTINGS } from "../lib/analysis/defaults";
 import type { AnalysisReport, RankedCandidate } from "../lib/analysis/types";
-import { isIndianIndex } from "../lib/analysis/marketRegion";
 
 export const Route = createFileRoute("/results")({
   head: () => ({
@@ -37,8 +36,6 @@ function ResultsPage() {
   const runAnalysisFn = useServerFn(runAnalysis);
   const [report, setReport] = useState<AnalysisReport | null>(() => getLastReport());
 
-  // If user navigates here directly with no run, build a sample so the page
-  // is never empty for first-time visitors.
   useEffect(() => {
     if (report) return;
     let cancelled = false;
@@ -136,10 +133,8 @@ function ResultsPage() {
                 title="No stocks passed the current filter set"
                 description="The screen completed successfully, but no name cleared every hard filter."
                 details={[
-                  `Current pullback band is ${report.request.settings.minPullbackPct}–${report.request.settings.maxPullbackPct}%.`,
-                  isIndianIndex(report.request.symbol)
-                    ? `Market-cap floor is ₹${Math.round(report.request.settings.minMarketCapB * 100).toLocaleString("en-IN")} Cr and ${report.summary.rejectedCount} names were rejected.`
-                    : `Market-cap floor is $${report.request.settings.minMarketCapB}B and ${report.summary.rejectedCount} names were rejected.`,
+                  "Current pullback band is " + report.request.settings.minPullbackPct + "–" + report.request.settings.maxPullbackPct + "%.",
+                  "Market-cap floor is $" + report.request.settings.minMarketCapB + "B and " + report.summary.rejectedCount + " names were rejected.",
                   "Try widening the pullback range, lowering the cap floor, or allowing names below the 200-day moving average.",
                 ]}
                 action={
