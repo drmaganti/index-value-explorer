@@ -36,8 +36,6 @@ function ResultsPage() {
   const runAnalysisFn = useServerFn(runAnalysis);
   const [report, setReport] = useState<AnalysisReport | null>(() => getLastReport());
 
-  // If user navigates here directly with no run, build a sample so the page
-  // is never empty for first-time visitors.
   useEffect(() => {
     if (report) return;
     let cancelled = false;
