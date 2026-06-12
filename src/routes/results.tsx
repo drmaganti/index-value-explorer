@@ -135,7 +135,7 @@ function ResultsPage() {
                 title="No stocks passed the current filter set"
                 description="The screen completed successfully, but no name cleared every hard filter."
                 details={[
-                  `Current pullback band is ${report.request.settings.minPullbackPct}–${report.request.settings.maxPullbackPct}%.",
+                  `Current pullback band is ${report.request.settings.minPullbackPct}–${report.request.settings.maxPullbackPct}%.,
                   `Market-cap floor is $${report.request.settings.minMarketCapB}B and ${report.summary.rejectedCount} names were rejected.`,
                   "Try widening the pullback range, lowering the cap floor, or allowing names below the 200-day moving average.",
                 ]}
