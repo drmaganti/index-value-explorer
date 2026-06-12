@@ -124,7 +124,6 @@ export function InputPanel() {
             }}
             errors={liveErrors}
             disabled={isRunning}
-            symbol={symbol}
           />
 
           <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
