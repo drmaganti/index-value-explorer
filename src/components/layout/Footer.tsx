@@ -8,7 +8,7 @@ export function Footer() {
           <div className="md:col-span-2">
             <p className="text-sm font-semibold tracking-tight">Index Value Agent</p>
             <p className="mt-3 max-w-md text-sm text-muted-foreground text-pretty">
-              A focused screening workflow for identifying large-cap businesses that may deserve a second look after a pullback.
+              A focused screening workflow for identifying indexes or ETFs that may deserve a second look after a pullback.
             </p>
           </div>
           <div>
