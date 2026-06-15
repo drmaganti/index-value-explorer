@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Download, BookOpen, Sparkles, ShieldCheck } from "lucide-react";
+import { Download, BookOpen, Sparkles, ShieldCheck, Bot } from "lucide-react";
 import { PageHeader } from "../components/common/PageHeader";
 import { EmptyState } from "../components/common/EmptyState";
 import { SummaryCardsPlaceholder } from "../components/results/SummaryCardsPlaceholder";
@@ -10,6 +10,7 @@ import { StockDetailPlaceholder } from "../components/results/StockDetailPlaceho
 import { RejectedPanelPlaceholder } from "../components/results/RejectedPanelPlaceholder";
 import { getLastReport } from "../lib/analysis/reportStore";
 import { runAnalysis } from "../lib/analysis/analysis.functions";
+import { generateAnalysisNarrative, type AnalysisNarrative } from "../lib/ai/narrative.functions";
 import { DEFAULT_SETTINGS } from "../lib/analysis/defaults";
 import type { AnalysisReport, RankedCandidate } from "../lib/analysis/types";
 
@@ -34,7 +35,11 @@ export const Route = createFileRoute("/results")({
 
 function ResultsPage() {
   const runAnalysisFn = useServerFn(runAnalysis);
+  const narrativeFn = useServerFn(generateAnalysisNarrative);
   const [report, setReport] = useState<AnalysisReport | null>(() => getLastReport());
+  const [narrative, setNarrative] = useState<AnalysisNarrative | null>(null);
+  const [narrativeStatus, setNarrativeStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [narrativeError, setNarrativeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (report) return;
@@ -55,6 +60,55 @@ function ResultsPage() {
   useEffect(() => {
     if (firstRanked && !selected) setSelected(firstRanked);
   }, [firstRanked, selected]);
+
+  useEffect(() => {
+    if (!report || report.ranked.length === 0) return;
+    let cancelled = false;
+    setNarrativeStatus("loading");
+    setNarrativeError(null);
+    void narrativeFn({
+      data: {
+        universeName: report.summary.universeName,
+        symbol: report.request.symbol,
+        mode: report.request.settings.mode,
+        passedCount: report.summary.passedCount,
+        rejectedCount: report.summary.rejectedCount,
+        constituentsScanned: report.summary.constituentsScanned,
+        ranked: report.ranked.slice(0, 12).map((r) => ({
+          rank: r.rank,
+          ticker: r.ticker,
+          name: r.name,
+          sector: r.sector,
+          score: r.score,
+          pullbackPct: r.pullbackPct,
+          marketCapB: r.marketCapB,
+          forwardPE: r.forwardPE,
+          trailingPE: r.trailingPE,
+          evToEbitda: r.evToEbitda,
+          operatingMarginPct: r.operatingMarginPct,
+          revenueGrowthPct: r.revenueGrowthPct,
+          earningsGrowthPct: r.earningsGrowthPct,
+          freeCashFlowB: r.freeCashFlowB,
+          debtToEquity: r.debtToEquity,
+          returnOnEquityPct: r.returnOnEquityPct,
+          above200dma: r.above200dma,
+        })),
+      },
+    })
+      .then((n) => {
+        if (cancelled) return;
+        setNarrative(n);
+        setNarrativeStatus("idle");
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setNarrativeError(err instanceof Error ? err.message : "AI narrative failed.");
+        setNarrativeStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [report, narrativeFn]);
 
   const isSample = useMemo(
     () => !!report && !getLastReport(),
@@ -121,6 +175,33 @@ function ResultsPage() {
         </div>
 
         <SummaryCardsPlaceholder report={report} />
+
+        {!hasNoResults ? (
+          <section className="rounded-lg border border-border bg-surface-elevated p-5">
+            <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+              <Bot className="h-4 w-4 text-primary" />
+              AI analyst summary
+            </div>
+            {narrativeStatus === "loading" && !narrative ? (
+              <p className="text-sm text-muted-foreground">Generating AI commentary…</p>
+            ) : narrativeStatus === "error" ? (
+              <p className="text-sm text-destructive">{narrativeError}</p>
+            ) : narrative?.summary ? (
+              <p className="text-sm leading-relaxed text-foreground">{narrative.summary}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">No summary available.</p>
+            )}
+            {selected && narrative?.theses?.[selected.ticker.toUpperCase()] ? (
+              <p className="mt-3 border-t border-border pt-3 text-sm leading-relaxed">
+                <span className="font-semibold">{selected.ticker} thesis: </span>
+                {narrative.theses[selected.ticker.toUpperCase()]}
+              </p>
+            ) : null}
+            <p className="mt-3 text-[11px] text-muted-foreground">
+              Generated by AI from screen metrics. Informational only — not financial advice.
+            </p>
+          </section>
+        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
           <div className="space-y-3">
