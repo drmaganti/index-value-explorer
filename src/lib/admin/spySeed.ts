@@ -1,0 +1,75 @@
+/**
+ * Static fallback list of large/mid-cap S&P 500 names used only when
+ * Wikipedia and Finnhub ETF holdings both fail during the very first
+ * bootstrap. Not exhaustive — intentionally limited to top names so the
+ * screener has *something* to work with on a cold start.
+ */
+export interface SpySeed {
+  ticker: string;
+  name: string;
+  sector: string;
+}
+
+export const SPY_SEED_LIST: SpySeed[] = [
+  { ticker: "AAPL", name: "Apple Inc.", sector: "Information Technology" },
+  { ticker: "MSFT", name: "Microsoft Corporation", sector: "Information Technology" },
+  { ticker: "NVDA", name: "NVIDIA Corporation", sector: "Information Technology" },
+  { ticker: "GOOGL", name: "Alphabet Inc. Class A", sector: "Communication Services" },
+  { ticker: "GOOG", name: "Alphabet Inc. Class C", sector: "Communication Services" },
+  { ticker: "AMZN", name: "Amazon.com Inc.", sector: "Consumer Discretionary" },
+  { ticker: "META", name: "Meta Platforms Inc.", sector: "Communication Services" },
+  { ticker: "BRK.B", name: "Berkshire Hathaway Inc. Class B", sector: "Financials" },
+  { ticker: "TSLA", name: "Tesla Inc.", sector: "Consumer Discretionary" },
+  { ticker: "LLY", name: "Eli Lilly and Company", sector: "Health Care" },
+  { ticker: "AVGO", name: "Broadcom Inc.", sector: "Information Technology" },
+  { ticker: "JPM", name: "JPMorgan Chase & Co.", sector: "Financials" },
+  { ticker: "V", name: "Visa Inc.", sector: "Financials" },
+  { ticker: "UNH", name: "UnitedHealth Group", sector: "Health Care" },
+  { ticker: "XOM", name: "Exxon Mobil Corporation", sector: "Energy" },
+  { ticker: "MA", name: "Mastercard Incorporated", sector: "Financials" },
+  { ticker: "JNJ", name: "Johnson & Johnson", sector: "Health Care" },
+  { ticker: "PG", name: "Procter & Gamble", sector: "Consumer Staples" },
+  { ticker: "HD", name: "Home Depot", sector: "Consumer Discretionary" },
+  { ticker: "COST", name: "Costco Wholesale", sector: "Consumer Staples" },
+  { ticker: "ORCL", name: "Oracle Corporation", sector: "Information Technology" },
+  { ticker: "ABBV", name: "AbbVie Inc.", sector: "Health Care" },
+  { ticker: "MRK", name: "Merck & Co.", sector: "Health Care" },
+  { ticker: "BAC", name: "Bank of America", sector: "Financials" },
+  { ticker: "CVX", name: "Chevron Corporation", sector: "Energy" },
+  { ticker: "KO", name: "The Coca-Cola Company", sector: "Consumer Staples" },
+  { ticker: "PEP", name: "PepsiCo Inc.", sector: "Consumer Staples" },
+  { ticker: "WMT", name: "Walmart Inc.", sector: "Consumer Staples" },
+  { ticker: "ADBE", name: "Adobe Inc.", sector: "Information Technology" },
+  { ticker: "CRM", name: "Salesforce Inc.", sector: "Information Technology" },
+  { ticker: "NFLX", name: "Netflix Inc.", sector: "Communication Services" },
+  { ticker: "ACN", name: "Accenture plc", sector: "Information Technology" },
+  { ticker: "MCD", name: "McDonald's Corporation", sector: "Consumer Discretionary" },
+  { ticker: "TMO", name: "Thermo Fisher Scientific", sector: "Health Care" },
+  { ticker: "AMD", name: "Advanced Micro Devices", sector: "Information Technology" },
+  { ticker: "LIN", name: "Linde plc", sector: "Materials" },
+  { ticker: "DIS", name: "The Walt Disney Company", sector: "Communication Services" },
+  { ticker: "CSCO", name: "Cisco Systems", sector: "Information Technology" },
+  { ticker: "WFC", name: "Wells Fargo & Company", sector: "Financials" },
+  { ticker: "ABT", name: "Abbott Laboratories", sector: "Health Care" },
+  { ticker: "INTU", name: "Intuit Inc.", sector: "Information Technology" },
+  { ticker: "IBM", name: "IBM", sector: "Information Technology" },
+  { ticker: "GE", name: "GE Aerospace", sector: "Industrials" },
+  { ticker: "QCOM", name: "Qualcomm Incorporated", sector: "Information Technology" },
+  { ticker: "NOW", name: "ServiceNow Inc.", sector: "Information Technology" },
+  { ticker: "TXN", name: "Texas Instruments", sector: "Information Technology" },
+  { ticker: "AXP", name: "American Express", sector: "Financials" },
+  { ticker: "ISRG", name: "Intuitive Surgical", sector: "Health Care" },
+  { ticker: "CAT", name: "Caterpillar Inc.", sector: "Industrials" },
+  { ticker: "PFE", name: "Pfizer Inc.", sector: "Health Care" },
+  { ticker: "GS", name: "Goldman Sachs Group", sector: "Financials" },
+  { ticker: "MS", name: "Morgan Stanley", sector: "Financials" },
+  { ticker: "BKNG", name: "Booking Holdings", sector: "Consumer Discretionary" },
+  { ticker: "T", name: "AT&T Inc.", sector: "Communication Services" },
+  { ticker: "VZ", name: "Verizon Communications", sector: "Communication Services" },
+  { ticker: "RTX", name: "RTX Corporation", sector: "Industrials" },
+  { ticker: "PM", name: "Philip Morris International", sector: "Consumer Staples" },
+  { ticker: "UNP", name: "Union Pacific", sector: "Industrials" },
+  { ticker: "SPGI", name: "S&P Global Inc.", sector: "Financials" },
+  { ticker: "LOW", name: "Lowe's Companies", sector: "Consumer Discretionary" },
+  { ticker: "HON", name: "Honeywell International", sector: "Industrials" },
+];
