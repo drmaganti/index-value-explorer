@@ -163,7 +163,35 @@ async function refreshSnapshotsInternal(): Promise<{
   let processed = 0;
   let failed = 0;
   const failedTickers: string[] = [];
-  const snapshotRows: Array<Record<string, unknown>> = [];
+  type SnapshotRow = {
+    ticker: string;
+    trade_date: string;
+    close_price: number | null;
+    previous_close: number | null;
+    fifty_two_week_high: number | null;
+    fifty_two_week_low: number | null;
+    two_hundred_day_moving_average: number | null;
+    market_cap_b: number | null;
+    forward_pe: number | null;
+    trailing_pe: number | null;
+    ev_to_ebitda: number | null;
+    price_to_book: number | null;
+    revenue_growth: number | null;
+    earnings_growth: number | null;
+    operating_margin: number | null;
+    gross_margin: number | null;
+    return_on_equity: number | null;
+    free_cash_flow_b: number | null;
+    debt_to_equity: number | null;
+    beta: number | null;
+    sector: string | null;
+    industry: string | null;
+    provider_primary: string;
+    provider_secondary: string;
+    data_completeness_pct: number;
+    missing_data_count: number;
+  };
+  const snapshotRows: SnapshotRow[] = [];
 
   for (const ticker of tickers) {
     try {
