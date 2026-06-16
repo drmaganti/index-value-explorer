@@ -8,7 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   bootstrapInitialMarketData,
   triggerRefreshConstituents,
-  triggerRefreshSnapshots,
+  triggerCreateBootstrapQueue,
+  processBootstrapTickerQueue,
+  retryFailedTickers,
+  refreshDailyPrices,
   getBootstrapStatus,
 } from "@/lib/admin/bootstrap.functions";
 
@@ -26,7 +29,10 @@ function AdminBootstrapPage() {
   const fetchStatus = useServerFn(getBootstrapStatus);
   const runBootstrap = useServerFn(bootstrapInitialMarketData);
   const runRefreshC = useServerFn(triggerRefreshConstituents);
-  const runRefreshS = useServerFn(triggerRefreshSnapshots);
+  const runCreateQueue = useServerFn(triggerCreateBootstrapQueue);
+  const runProcessQueue = useServerFn(processBootstrapTickerQueue);
+  const runRetryFailed = useServerFn(retryFailedTickers);
+  const runDailyPrices = useServerFn(refreshDailyPrices);
 
   async function loadStatus() {
     setError(null);
@@ -99,9 +105,25 @@ function AdminBootstrapPage() {
               : "Never"
           }
         />
-        <Stat label="Last status" value={status?.lastBootstrap?.status ?? "—"} />
+        <Stat
+          label="Last job"
+          value={
+            status?.lastBootstrap?.job_name
+              ? `${status.lastBootstrap.job_name} (${status.lastBootstrap.status})`
+              : "—"
+          }
+        />
         <Stat label="Failed records" value={status?.lastBootstrap?.records_failed ?? "—"} />
       </Card>
+
+      {status?.queue && (
+        <Card className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Stat label="Queue pending" value={status.queue.pending} />
+          <Stat label="Queue in progress" value={status.queue.inProgress} />
+          <Stat label="Queue completed" value={status.queue.completed} />
+          <Stat label="Queue failed" value={status.queue.failed} />
+        </Card>
+      )}
 
       {status?.indexCounts && (
         <Card className="p-4">
@@ -121,27 +143,62 @@ function AdminBootstrapPage() {
             disabled={!!busy}
             onClick={() => withBusy("bootstrap", () => runBootstrap({ data: { adminSecret } }))}
           >
-            {busy === "bootstrap" ? "Running…" : "Run initial data bootstrap"}
+            {busy === "bootstrap" ? "Running…" : "Run initial bootstrap (constituents + queue)"}
           </Button>
           <Button
             variant="secondary"
             disabled={!!busy}
             onClick={() => withBusy("constituents", () => runRefreshC({ data: { adminSecret } }))}
           >
-            {busy === "constituents" ? "Running…" : "Refresh index constituents"}
+            {busy === "constituents" ? "Running…" : "Run constituents refresh"}
           </Button>
           <Button
             variant="secondary"
             disabled={!!busy}
-            onClick={() => withBusy("snapshots", () => runRefreshS({ data: { adminSecret } }))}
+            onClick={() => withBusy("queue", () => runCreateQueue({ data: { adminSecret } }))}
           >
-            {busy === "snapshots" ? "Running…" : "Refresh stock snapshots"}
+            {busy === "queue" ? "Running…" : "Create bootstrap queue"}
+          </Button>
+          <Button
+            disabled={!!busy}
+            onClick={() => withBusy("process", () => runProcessQueue({ data: { adminSecret } }))}
+          >
+            {busy === "process" ? "Running…" : "Process next 10 tickers"}
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={!!busy}
+            onClick={() => withBusy("retry", () => runRetryFailed({ data: { adminSecret } }))}
+          >
+            {busy === "retry" ? "Running…" : "Retry failed tickers"}
+          </Button>
+          <Button
+            variant="outline"
+            disabled={!!busy}
+            onClick={() => withBusy("daily", () => runDailyPrices({ data: { adminSecret } }))}
+          >
+            {busy === "daily" ? "Running…" : "Refresh daily prices (no fundamentals)"}
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          End-of-day snapshots only. This app is a long-term research tool, not an intraday trader.
+          End-of-day snapshots only. Free-tier safe: bootstrap processes 10 tickers per click, throttled to ~40 Finnhub calls/minute. Click "Process next 10 tickers" repeatedly until pending reaches zero.
         </p>
       </Card>
+
+      {status?.recentFailures && status.recentFailures.length > 0 && (
+        <Card className="p-4 space-y-2">
+          <p className="text-sm font-medium">Recent failures</p>
+          <div className="space-y-1 text-xs">
+            {status.recentFailures.map((f: any) => (
+              <div key={f.ticker} className="flex gap-2">
+                <Badge variant="destructive">{f.ticker}</Badge>
+                <span className="text-muted-foreground">attempts: {f.attempts}</span>
+                <span className="truncate text-muted-foreground">{f.last_error?.slice(0, 200)}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {lastResult && (
         <Card className="p-4">
