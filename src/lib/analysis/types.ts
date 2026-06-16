@@ -70,6 +70,7 @@ export interface RankedCandidate {
   factorHighlights: string[];
   hasPartialData: boolean;
   missingDataCount: number;
+  factorBreakdown?: FactorContribution[];
 }
 
 export interface FactorContribution {
