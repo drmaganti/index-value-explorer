@@ -72,6 +72,15 @@ export interface RankedCandidate {
   missingDataCount: number;
 }
 
+export interface FactorContribution {
+  factor: string;                   // ScoringFactor id
+  label: string;                    // human-readable label
+  rawValue?: number;
+  normalized: number;               // 0..1
+  weight: number;                   // 0..1
+  contribution: number;             // 0..1
+}
+
 export interface RejectedCandidate {
   ticker: string;
   name?: string;
