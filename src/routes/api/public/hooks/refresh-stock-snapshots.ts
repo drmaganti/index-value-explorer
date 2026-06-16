@@ -2,10 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   FinnhubFundamentalsProvider,
   YahooFundamentalsProvider,
-  type YahooSupplementalMetrics,
 } from "@/services";
-import type { StockMetrics } from "@/services/types";
 import { normalizeTickerForProvider } from "@/services/symbolNormalization";
+import type { StockMetrics } from "@/services/types";
 import { getLatestCompletedTradingDay } from "@/lib/marketCalendar";
 
 function isAuthorized(request: Request): boolean {
