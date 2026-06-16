@@ -1,21 +1,21 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "../components/common/PageHeader";
-import { ShieldCheck, TrendingDown, Scale, AlertTriangle } from "lucide-react";
+import { ShieldCheck, TrendingDown, Scale, AlertTriangle, Filter, Sliders, Bot } from "lucide-react";
 
 export const Route = createFileRoute("/methodology")({
   head: () => ({
     meta: [
-      { title: "Methodology — Index Value Agent" },
+      { title: "Methodology — US Index Stock Screener" },
       {
         name: "description",
         content:
-          "How the Index Value Agent defines blue-chip, detects pullbacks, and blends quality with value. A screening tool, not financial advice.",
+          "How the deterministic US index screener applies hard filters, scores survivors 0–100, and uses AI only to narrate results. A research tool, not financial advice.",
       },
-      { property: "og:title", content: "Methodology — Index Value Agent" },
+      { property: "og:title", content: "Methodology — US Index Stock Screener" },
       {
         property: "og:description",
         content:
-          "How blue-chip, pullback, and the quality + value blend are defined inside the Index Value Agent.",
+          "Hard filters, factor scoring 0–100, mode tilts, and how the AI summary is constrained to narrate the deterministic output.",
       },
     ],
   }),
@@ -24,24 +24,39 @@ export const Route = createFileRoute("/methodology")({
 
 const sections = [
   {
-    icon: ShieldCheck,
-    title: "What “blue-chip” means here",
-    body: "Here it means large, established businesses with durable economics, meaningful liquidity, and enough fundamental history to screen with confidence. The goal is to exclude fragile or speculative names before ranking begins.",
-  },
-  {
-    icon: TrendingDown,
-    title: "What “pullback” means",
-    body: "A pullback is a meaningful move below a recent 52-week high. The screen looks for names that have reset without automatically assuming the underlying business has weakened.",
+    icon: Filter,
+    title: "1. Hard filters run first",
+    body: "Every constituent must clear every hard filter — market-cap floor, pullback band, minimum operating margin, free-cash-flow policy, leverage cap, and the 200-day moving average rule. Anything that fails is rejected with a specific machine-readable reason and is never scored.",
   },
   {
     icon: Scale,
-    title: "Why quality and value are blended",
-    body: "Cheap alone is not enough. The ranking blends valuation with operating quality so the shortlist favors discounts that may reflect sentiment or timing rather than lasting business deterioration.",
+    title: "2. Survivors are scored 0–100",
+    body: "Passing stocks are scored across valuation (forward P/E, trailing P/E, EV/EBITDA, P/B), quality (operating margin, gross margin, ROE), growth (revenue, earnings), balance sheet (debt/equity, free cash flow), volatility (beta), and pullback depth. Each factor is normalized 0–1 against fixed bounds, multiplied by its weight, and summed. The total is rescaled to 0–100.",
+  },
+  {
+    icon: Sliders,
+    title: "3. Missing metrics redistribute weight",
+    body: "If a stock is missing a factor's value, that factor is dropped and its weight is redistributed proportionally across the factors that do have data. Stocks with sparse coverage aren't penalized to zero, but the card flags partial data so you can interpret the score with the right confidence.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "4. Mode tilts the weights",
+    body: "Conservative tilts toward operating margin, free cash flow, and balance-sheet strength. Balanced uses the default weights. Opportunistic tilts toward pullback depth and growth. The same factors are used in every mode — only the weights change.",
+  },
+  {
+    icon: TrendingDown,
+    title: "5. Pullback is just distance from a 52-week high",
+    body: "A pullback is a negative percentage off the trailing 52-week high. A stock priced 18% below its high has an −18% pullback. The screen lets you set the band you want to consider (for example 8% to 35%) so you can ignore stocks that haven't moved or those in deep distress.",
+  },
+  {
+    icon: Bot,
+    title: "6. AI only narrates the output",
+    body: "If credits are available, an AI summary describes what the deterministic output shows: themes, sector skew, common factors, and cautions. The model is explicitly forbidden from inventing data, recommending buy/sell/hold, or setting price targets. The score table is always the source of truth.",
   },
   {
     icon: AlertTriangle,
-    title: "This is a screening tool, not financial advice",
-    body: "Index Value Agent surfaces candidates for further review. It does not know your objectives, constraints, taxes, or risk tolerance, so every result should be treated as research input rather than a recommendation.",
+    title: "This is a research tool, not financial advice",
+    body: "The screener surfaces candidates for further review. It does not know your objectives, constraints, taxes, or risk tolerance, so every result should be treated as research input — never as a recommendation to buy or sell.",
   },
 ];
 
@@ -50,8 +65,8 @@ function MethodologyPage() {
     <>
       <PageHeader
         eyebrow="Methodology"
-        title="How the agent thinks"
-        description="A plain-English explanation of how candidates are defined, filtered, and ranked."
+        title="How the screener works"
+        description="A plain-English walkthrough of how candidates are filtered, scored, and explained. The deterministic engine is the source of truth; the AI layer only narrates."
       />
       <div className="page-container-narrow py-12">
         <div className="space-y-6">

@@ -28,6 +28,7 @@ const narrativeRequestSchema = z.object({
   passedCount: z.number(),
   rejectedCount: z.number(),
   constituentsScanned: z.number(),
+  dataCompletenessPct: z.number().optional(),
   ranked: z.array(rankedStockInputSchema).max(15),
 });
 
@@ -56,18 +57,29 @@ export const generateAnalysisNarrative = createServerFn({ method: "POST" })
       })
       .join("\n");
 
-    const systemPrompt = `You are an equity analyst writing concise, neutral commentary for a value-screening report. You only describe what the metrics show; you never give buy/sell recommendations or price targets. Respond ONLY with valid JSON matching the requested schema, no markdown fences.`;
+    const systemPrompt = `You are a research assistant summarizing the output of a deterministic stock screen. Hard rules you must follow:
+- Describe ONLY what the provided metrics show. Never invent numbers, peers, news, catalysts, or forward estimates.
+- Never give buy, sell, hold, accumulate, trim, or "watchlist" recommendations.
+- Never mention price targets, fair value, upside/downside %, or expected returns.
+- Never imply this is investment advice. Use neutral, descriptive language ("screens with...", "the metrics show...", "passes the filter for...").
+- If data completeness is low (< 70%) or many fields are n/a, add a brief caveat that conclusions are limited by missing data.
+- Output strictly valid JSON matching the requested shape. No markdown fences, no prose outside JSON.`;
 
-    const userPrompt = `Universe: ${data.universeName} (${data.symbol}). Mode: ${data.mode}. ${data.passedCount} of ${data.constituentsScanned} names passed; ${data.rejectedCount} rejected.
+    const completenessLine =
+      data.dataCompletenessPct != null
+        ? `Data completeness: ${data.dataCompletenessPct}%.`
+        : "";
+
+    const userPrompt = `Universe: ${data.universeName} (${data.symbol}). Scoring mode: ${data.mode}. ${data.passedCount} of ${data.constituentsScanned} names passed; ${data.rejectedCount} rejected. ${completenessLine}
 
 Top ranked candidates:
 ${tickerLines}
 
 Return JSON with this exact shape:
 {
-  "summary": "2-3 sentence overview of what the screen surfaced (themes, common factors, notable cautions). Plain text, <= 400 chars.",
+  "summary": "2-3 sentence neutral overview of what the screen surfaced — common factors, sector skew, notable cautions. Mention low data completeness if relevant. Plain text, <= 400 chars. No advice.",
   "theses": {
-    "<TICKER>": "1-2 sentence thesis grounded in that name's metrics (pullback, valuation, profitability, growth). <= 240 chars. No advice."
+    "<TICKER>": "1-2 sentence neutral description grounded in that name's screen metrics (pullback, valuation, profitability, growth, leverage). <= 240 chars. No buy/sell language, no price targets."
   }
 }
 Include a thesis for every ticker listed above, keyed by ticker symbol exactly as given.`;

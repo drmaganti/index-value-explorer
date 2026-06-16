@@ -1,32 +1,34 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Download, BookOpen, Sparkles, ShieldCheck, Bot } from "lucide-react";
+import { BookOpen, Sparkles, Bot, AlertTriangle } from "lucide-react";
 import { PageHeader } from "../components/common/PageHeader";
 import { EmptyState } from "../components/common/EmptyState";
-import { SummaryCardsPlaceholder } from "../components/results/SummaryCardsPlaceholder";
-import { RankedTablePlaceholder } from "../components/results/RankedTablePlaceholder";
-import { StockDetailPlaceholder } from "../components/results/StockDetailPlaceholder";
+import { ExecutiveSummary } from "../components/results/ExecutiveSummary";
+import { RankedStockCard } from "../components/results/RankedStockCard";
 import { RejectedPanelPlaceholder } from "../components/results/RejectedPanelPlaceholder";
+import { DataQualityPanel } from "../components/results/DataQualityPanel";
+import { MethodologySummary } from "../components/results/MethodologySummary";
+import { Disclaimer } from "../components/results/Disclaimer";
 import { getLastReport } from "../lib/analysis/reportStore";
 import { runAnalysis } from "../lib/analysis/analysis.functions";
 import { generateAnalysisNarrative, type AnalysisNarrative } from "../lib/ai/narrative.functions";
 import { DEFAULT_SETTINGS } from "../lib/analysis/defaults";
-import type { AnalysisReport, RankedCandidate } from "../lib/analysis/types";
+import type { AnalysisReport } from "../lib/analysis/types";
 
 export const Route = createFileRoute("/results")({
   head: () => ({
     meta: [
-      { title: "Report — Index Value Agent" },
+      { title: "Screen report — US Index Research" },
       {
         name: "description",
         content:
-          "Ranked top blue-chip value opportunities surfaced by the Index Value Agent screen.",
+          "Transparent stock screening output: ranked candidates, rejection reasons, and data quality across SPY, QQQ, and DIA constituents.",
       },
-      { property: "og:title", content: "Report — Index Value Agent" },
+      { property: "og:title", content: "Screen report — US Index Research" },
       {
         property: "og:description",
-        content: "Ranked top blue-chip value opportunities from the Index Value Agent.",
+        content: "Ranked candidates, rejection reasons, and data quality from a deterministic US index stock screen.",
       },
     ],
   }),
@@ -44,7 +46,7 @@ function ResultsPage() {
   useEffect(() => {
     if (report) return;
     let cancelled = false;
-    void runAnalysisFn({ data: { symbol: "QQQ", settings: DEFAULT_SETTINGS } })
+    void runAnalysisFn({ data: { symbol: "SPY", settings: DEFAULT_SETTINGS } })
       .then((nextReport) => {
         if (!cancelled) setReport(nextReport);
       })
@@ -53,13 +55,6 @@ function ResultsPage() {
       cancelled = true;
     };
   }, [report, runAnalysisFn]);
-
-  const [selected, setSelected] = useState<RankedCandidate | undefined>();
-
-  const firstRanked = report?.ranked[0];
-  useEffect(() => {
-    if (firstRanked && !selected) setSelected(firstRanked);
-  }, [firstRanked, selected]);
 
   useEffect(() => {
     if (!report || report.ranked.length === 0) return;
@@ -74,6 +69,7 @@ function ResultsPage() {
         passedCount: report.summary.passedCount,
         rejectedCount: report.summary.rejectedCount,
         constituentsScanned: report.summary.constituentsScanned,
+        dataCompletenessPct: report.summary.dataCompletenessPct,
         ranked: report.ranked.slice(0, 12).map((r) => ({
           rank: r.rank,
           ticker: r.ticker,
@@ -110,30 +106,26 @@ function ResultsPage() {
     };
   }, [report, narrativeFn]);
 
-  const isSample = useMemo(
-    () => !!report && !getLastReport(),
-    [report],
-  );
-
   if (!report) {
     return (
       <>
-        <PageHeader eyebrow="Report" title="Loading sample report…" />
+        <PageHeader eyebrow="Screen report" title="Loading sample report…" />
         <div className="mx-auto max-w-7xl px-6 py-10">
-          <EmptyState title="Preparing a sample report" />
+          <EmptyState title="Preparing a sample screen" description="Running the default SPY screen so you can see the report layout." />
         </div>
       </>
     );
   }
 
   const hasNoResults = report.ranked.length === 0;
+  const lowCompleteness = report.summary.dataCompletenessPct < 70;
 
   return (
     <>
       <PageHeader
-        eyebrow={`${isSample ? "Sample report · " : "Report · "}${report.request.symbol}`}
-        title={`${report.summary.universeName} screen results`}
-        description={`${new Date(report.generatedAt).toLocaleString()} · ${report.summary.constituentsScanned} constituents analyzed · ${report.summary.passedCount} passed filters · top ${report.summary.topCount} returned`}
+        eyebrow={`Screen report · ${report.request.symbol}`}
+        title={`${report.summary.universeName} — ${report.summary.topCount} ranked candidates`}
+        description={`Generated ${new Date(report.generatedAt).toLocaleString()} · ${report.summary.constituentsScanned} constituents scanned · ${report.summary.passedCount} passed filters · ${report.summary.rejectedCount} rejected.`}
         actions={
           <>
             <Link
@@ -145,112 +137,102 @@ function ResultsPage() {
             </Link>
             <Link
               to="/analyze"
-              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-surface-elevated px-3 text-sm font-medium hover:bg-muted"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
               <Sparkles className="h-4 w-4" />
               New run
             </Link>
-            <button
-              type="button"
-              className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </button>
           </>
         }
       />
 
       <div className="page-container space-y-8 py-10">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="rounded-full border border-border bg-surface px-2.5 py-1">Last updated {new Date(report.generatedAt).toLocaleString()}</span>
-          <span className="rounded-full border border-border bg-surface px-2.5 py-1">{report.summary.metricsAvailable}/{report.summary.constituentsScanned} stocks with metrics</span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            Data completeness {report.summary.dataCompletenessPct}%
-          </span>
-          {report.summary.partialDataCount > 0 ? (
-            <span className="rounded-full border border-border bg-surface px-2.5 py-1">{report.summary.partialDataCount} ranked names include partial data</span>
-          ) : null}
-        </div>
-
-        <SummaryCardsPlaceholder report={report} />
+        <ExecutiveSummary report={report} />
 
         {!hasNoResults ? (
-          <section className="rounded-lg border border-border bg-surface-elevated p-5">
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+          <section className="app-card p-5">
+            <div className="flex items-center justify-between gap-2 text-sm font-semibold">
+              <div className="flex items-center gap-2">
               <Bot className="h-4 w-4 text-primary" />
-              AI analyst summary
+                AI research summary
+              </div>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                Neutral · no advice
+              </span>
             </div>
             {narrativeStatus === "loading" && !narrative ? (
-              <p className="text-sm text-muted-foreground">Generating AI commentary…</p>
+              <p className="mt-3 text-sm text-muted-foreground">Generating neutral commentary from the screen metrics…</p>
             ) : narrativeStatus === "error" ? (
-              <p className="text-sm text-destructive">{narrativeError}</p>
+              <p className="mt-3 text-sm text-destructive">{narrativeError}</p>
             ) : narrative?.summary ? (
-              <p className="text-sm leading-relaxed text-foreground">{narrative.summary}</p>
+              <p className="mt-3 text-sm leading-relaxed text-foreground">{narrative.summary}</p>
             ) : (
-              <p className="text-sm text-muted-foreground">No summary available.</p>
+              <p className="mt-3 text-sm text-muted-foreground">No summary available.</p>
             )}
-            {selected && narrative?.theses?.[selected.ticker.toUpperCase()] ? (
-              <p className="mt-3 border-t border-border pt-3 text-sm leading-relaxed">
-                <span className="font-semibold">{selected.ticker} thesis: </span>
-                {narrative.theses[selected.ticker.toUpperCase()]}
+            {lowCompleteness ? (
+              <p className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-1 text-[11px] text-destructive">
+                <AlertTriangle className="h-3 w-3" />
+                Data completeness is {report.summary.dataCompletenessPct}% — interpret commentary cautiously.
               </p>
             ) : null}
             <p className="mt-3 text-[11px] text-muted-foreground">
-              Generated by AI from screen metrics. Informational only — not financial advice.
+              The AI summary only describes the screen output. It cannot recommend buying or selling and does not generate price targets.
             </p>
           </section>
         ) : null}
 
-        <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold tracking-tight">Ranked candidates</h2>
-              <p className="text-xs text-muted-foreground">Click a row to inspect fundamentals and rationale</p>
+        <section className="space-y-4">
+          <div className="flex items-end justify-between">
+            <div>
+              <h2 className="text-base font-semibold tracking-tight">Top ranked stocks</h2>
+              <p className="text-xs text-muted-foreground">
+                Sorted by composite score. Expand each card for the strongest and weakest factors driving the score.
+              </p>
             </div>
-            {hasNoResults ? (
-              <EmptyState
-                title="No stocks passed the current filter set"
-                description="The screen completed successfully, but no name cleared every hard filter."
-                details={[
-                  "Current pullback band is " + report.request.settings.minPullbackPct + "–" + report.request.settings.maxPullbackPct + "%.",
-                  "Market-cap floor is $" + report.request.settings.minMarketCapB + "B and " + report.summary.rejectedCount + " names were rejected.",
-                  "Try widening the pullback range, lowering the cap floor, or allowing names below the 200-day moving average.",
-                ]}
-                action={
-                  <Link
-                    to="/analyze"
-                    className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-surface-elevated px-4 text-sm font-medium hover:bg-muted"
-                  >
-                    Edit settings
-                  </Link>
-                }
-              />
-            ) : (
-              <RankedTablePlaceholder
-                rows={report.ranked}
-                onSelect={setSelected}
-                selectedTicker={selected?.ticker}
-              />
-            )}
+            <span className="text-xs text-muted-foreground">{report.ranked.length} cards</span>
           </div>
-
-          <div className="space-y-3">
-            <h2 className="text-base font-semibold tracking-tight">Stock detail</h2>
-            <StockDetailPlaceholder stock={selected} />
-          </div>
-        </div>
+          {hasNoResults ? (
+            <EmptyState
+              title="No stocks passed the current filter set"
+              description="The screen completed successfully, but no name cleared every hard filter."
+              details={[
+                `Current pullback band is ${report.request.settings.minPullbackPct}–${report.request.settings.maxPullbackPct}%.`,
+                `Market-cap floor is $${report.request.settings.minMarketCapB}B and ${report.summary.rejectedCount} names were rejected.`,
+                "Try widening the pullback range, lowering the cap floor, or allowing names below the 200-day moving average.",
+              ]}
+              action={
+                <Link
+                  to="/analyze"
+                  className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-surface-elevated px-4 text-sm font-medium hover:bg-muted"
+                >
+                  Edit settings
+                </Link>
+              }
+            />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {report.ranked.map((stock) => (
+                <div key={stock.ticker} className="space-y-2">
+                  <RankedStockCard stock={stock} />
+                  {narrative?.theses?.[stock.ticker.toUpperCase()] ? (
+                    <div className="rounded-md border border-border bg-surface px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+                      <span className="font-semibold text-foreground">AI note · </span>
+                      {narrative.theses[stock.ticker.toUpperCase()]}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <RejectedPanelPlaceholder rows={report.rejected} />
 
-        <p className="text-center text-xs text-muted-foreground">
-          This is a screening output built from live provider snapshots, not financial advice. See{" "}
-          <Link to="/methodology" className="font-medium text-primary hover:underline">
-            methodology
-          </Link>{" "}
-          for details.
-        </p>
+        <DataQualityPanel report={report} />
+
+        <MethodologySummary />
+
+        <Disclaimer />
       </div>
     </>
   );
