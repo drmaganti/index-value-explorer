@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ChevronDown, AlertCircle, ArrowDownRight } from "lucide-react";
 import type { RankedCandidate } from "@/lib/analysis/types";
 
@@ -113,7 +113,7 @@ export function RankedStockCard({ stock }: Props) {
   );
 }
 
-function Metric({ label, value }: { label: string; value: React.ReactNode }) {
+function Metric({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
