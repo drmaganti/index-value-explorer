@@ -1,6 +1,22 @@
 import type { EngineResult } from "./types";
 import type { AnalysisRequest, AnalysisReport } from "@/lib/analysis/types";
 
+const FACTOR_LABELS: Record<string, string> = {
+  forwardPE: "Forward P/E",
+  trailingPE: "Trailing P/E",
+  evToEbitda: "EV / EBITDA",
+  priceToBook: "Price / book",
+  drawdownFromHigh: "Pullback depth",
+  revenueGrowth: "Revenue growth",
+  earningsGrowth: "Earnings growth",
+  operatingMargin: "Operating margin",
+  grossMargin: "Gross margin",
+  returnOnEquity: "Return on equity",
+  freeCashFlow: "Free cash flow",
+  debtToEquity: "Debt / equity",
+  beta: "Beta",
+};
+
 /**
  * Bridge between the pure scoring engine and the UI's AnalysisReport
  * shape. Keeps the engine output shape free of UI-specific concerns
@@ -58,6 +74,14 @@ export function buildReportFromEngine(
       factorHighlights: r.passReasons.slice(1),
       hasPartialData: missingDataCount > 0,
       missingDataCount,
+      factorBreakdown: r.factorBreakdown.map((f) => ({
+        factor: f.factor,
+        label: FACTOR_LABELS[f.factor] ?? f.factor,
+        rawValue: f.rawValue,
+        normalized: f.normalized,
+        weight: f.weight,
+        contribution: f.contribution,
+      })),
     };
   });
   const partialDataCount = ranked.filter((stock) => stock.hasPartialData).length;
