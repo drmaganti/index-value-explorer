@@ -92,10 +92,8 @@ export const Route = createFileRoute("/api/public/hooks/refresh-index-constituen
           { headers: { "Content-Type": "application/json" } },
         );
       },
-      GET: async ({ request }) => {
-        // Convenience: allow GET to trigger same refresh (useful for manual ping).
-        return Route.options.server!.handlers!.POST!({ request } as any);
-      },
+      GET: async () =>
+        new Response("Use POST to trigger refresh.", { status: 405 }),
     },
   },
 });
