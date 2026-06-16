@@ -279,8 +279,8 @@ async function processQueueOnce(): Promise<{
         beta: fundamentals.beta,
         sector: null,
         industry: null,
-        provider_primary: "finnhub",
-        provider_secondary: "",
+        provider_primary: "yahoo",
+        provider_secondary: "finnhub",
         data_completeness_pct: computeCompleteness({
           close_price: candle.closePrice,
           fifty_two_week_high: candle.fiftyTwoWeekHigh,
