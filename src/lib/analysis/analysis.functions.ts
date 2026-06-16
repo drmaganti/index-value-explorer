@@ -39,6 +39,9 @@ export const runAnalysis = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    const allowLiveFallback =
+      (process.env.ALLOW_LIVE_FETCH_FALLBACK ?? "false").toLowerCase() === "true";
+
     // 1) Load latest active constituents for the selected index.
     let { data: constituentRows, error: cErr } = await supabaseAdmin
       .from("index_constituents")
@@ -49,10 +52,10 @@ export const runAnalysis = createServerFn({ method: "POST" })
 
     if (cErr) throw new Error(`Failed to load constituents: ${cErr.message}`);
 
-    // On-demand bootstrap: if the scheduled refresh hasn't populated this
-    // index yet, fetch live constituents now and persist them so subsequent
-    // runs hit the cache.
-    if (!constituentRows || constituentRows.length === 0) {
+    // On-demand bootstrap (live fallback) — only when explicitly enabled
+    // via ALLOW_LIVE_FETCH_FALLBACK. By default we require an admin to run
+    // bootstrapInitialMarketData first.
+    if ((!constituentRows || constituentRows.length === 0) && allowLiveFallback) {
       try {
         const provider = new FinnhubIndexProvider(process.env.FINNHUB_API_KEY ?? "");
         const live = await provider.getConstituents(request.symbol);
@@ -95,7 +98,9 @@ export const runAnalysis = createServerFn({ method: "POST" })
     }
 
     if (!constituentRows || constituentRows.length === 0) {
-      throw new Error(`No constituents available for ${request.symbol}.`);
+      throw new Error(
+        "Initial index data has not been loaded. Run data bootstrap first (Admin → Data bootstrap).",
+      );
     }
 
     const constituentsAsOf = constituentRows[0]?.as_of_date ?? null;
@@ -133,6 +138,12 @@ export const runAnalysis = createServerFn({ method: "POST" })
         .in("ticker", tickers);
       if (sErr) throw new Error(`Failed to load snapshots: ${sErr.message}`);
       snapshotRows = (rows ?? []) as Array<Record<string, unknown>>;
+    }
+
+    if (snapshotRows.length === 0) {
+      throw new Error(
+        "Initial stock snapshots have not been loaded. Run data bootstrap first (Admin → Data bootstrap).",
+      );
     }
 
     const metrics: StockMetrics[] = snapshotRows.map(snapshotRowToStockMetrics);
