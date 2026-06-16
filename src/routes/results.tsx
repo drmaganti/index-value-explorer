@@ -8,6 +8,7 @@ import { ExecutiveSummary } from "../components/results/ExecutiveSummary";
 import { RankedStockCard } from "../components/results/RankedStockCard";
 import { RejectedPanelPlaceholder } from "../components/results/RejectedPanelPlaceholder";
 import { DataQualityPanel } from "../components/results/DataQualityPanel";
+import { DataFreshnessBar } from "../components/results/DataFreshnessBar";
 import { MethodologySummary } from "../components/results/MethodologySummary";
 import { Disclaimer } from "../components/results/Disclaimer";
 import { getLastReport } from "../lib/analysis/reportStore";
@@ -147,6 +148,7 @@ function ResultsPage() {
       />
 
       <div className="page-container space-y-8 py-10">
+        <DataFreshnessBar report={report} />
         <ExecutiveSummary report={report} />
 
         {!hasNoResults ? (

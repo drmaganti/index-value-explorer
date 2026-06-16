@@ -1,19 +1,16 @@
 import { z } from "zod";
 import { createServerFn } from "@tanstack/react-start";
 import type { AnalysisRequest } from "./types";
-import type { StockMetrics, YahooSupplementalMetrics } from "@/services";
+import type { StockMetrics, IndexConstituent } from "@/services";
 import {
   buildReportFromEngine,
-  constituentsToTickers,
-  FinnhubFundamentalsProvider,
-  FinnhubIndexProvider,
-  YahooFundamentalsProvider,
   runScoringEngine,
   type FilterConfig,
   type ScoringConfig,
   DEFAULT_SCORING_WEIGHTS,
 } from "@/services";
 import { normalizeTickerForProvider } from "@/services/symbolNormalization";
+import { getLatestCompletedTradingDay, classifyFreshness } from "@/lib/marketCalendar";
 
 const analysisModeSchema = z.enum(["conservative", "balanced", "opportunistic"]);
 
@@ -34,157 +31,137 @@ const analysisRequestSchema = z.object({
 export const runAnalysis = createServerFn({ method: "POST" })
   .inputValidator(analysisRequestSchema)
   .handler(async ({ data }) => {
-    const apiKey = process.env.FINNHUB_API_KEY;
-
-    if (!apiKey) {
-      throw new Error("Market data provider key is not configured.");
-    }
-
     const request: AnalysisRequest = {
       symbol: data.symbol.trim().toUpperCase(),
       settings: data.settings,
     };
 
-    const indexProvider = new FinnhubIndexProvider(apiKey);
-    const fundamentalsProvider = new FinnhubFundamentalsProvider(apiKey);
-    const yahooProvider = new YahooFundamentalsProvider();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const constituents = await indexProvider.getConstituents(request.symbol);
-    // Indian exchanges (NSE `.NS`, BSE `.BO`) are not on Finnhub's free
-    // tier — calling it just burns request budget and returns nothing.
-    // Detect this once per run so we can skip the Finnhub hop entirely.
-    const isYahooOnlyUniverse = constituents.some((c) =>
-      /\.(NS|BO)$/i.test(c.ticker),
-    );
-    // Worker request budget is ~30s. To stay well within it, cap the
-    // universe to the top-weighted constituents (covers the bulk of the
-    // index by market cap and avoids upstream timeouts on large ETFs).
+    // 1) Load latest active constituents for the selected index.
+    const { data: constituentRows, error: cErr } = await supabaseAdmin
+      .from("index_constituents")
+      .select("ticker, company_name, sector, weight, as_of_date")
+      .eq("index_symbol", request.symbol)
+      .eq("is_active", true)
+      .order("weight", { ascending: false });
+
+    if (cErr) throw new Error(`Failed to load constituents: ${cErr.message}`);
+    if (!constituentRows || constituentRows.length === 0) {
+      throw new Error(
+        `No cached constituents for ${request.symbol}. The scheduled refresh has not run yet.`,
+      );
+    }
+
+    const constituentsAsOf = constituentRows[0]?.as_of_date ?? null;
+    const constituents: IndexConstituent[] = constituentRows.map((r) => ({
+      ticker: normalizeTickerForProvider(r.ticker),
+      name: r.company_name ?? r.ticker,
+      sector: r.sector ?? "Unknown",
+      weight: typeof r.weight === "number" ? r.weight : undefined,
+    }));
+
+    // Cap to top-weighted 60 to match prior behavior.
     const MAX_TICKERS_PER_RUN = 60;
-    const trimmedConstituents = [...constituents]
-      .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0))
-      .slice(0, MAX_TICKERS_PER_RUN);
-    const tickers = constituentsToTickers(trimmedConstituents);
-    // Use allSettled so a Yahoo (or Finnhub) failure doesn't kill the whole run.
-    const [metricsResult, supplementalResult] = await Promise.allSettled([
-      isYahooOnlyUniverse
-        ? Promise.resolve([] as StockMetrics[])
-        : fundamentalsProvider.getMetrics(tickers),
-      yahooProvider.getSupplementalMetrics(tickers),
-    ]);
-    const metrics =
-      metricsResult.status === "fulfilled" ? metricsResult.value : [];
-    const supplemental =
-      supplementalResult.status === "fulfilled" ? supplementalResult.value : [];
-    if (metricsResult.status === "rejected") {
-      console.error("Finnhub provider failed:", metricsResult.reason);
-    }
-    if (supplementalResult.status === "rejected") {
-      console.warn("Yahoo provider failed:", supplementalResult.reason);
+    const trimmedConstituents = constituents.slice(0, MAX_TICKERS_PER_RUN);
+    const tickers = trimmedConstituents.map((c) => c.ticker);
+
+    // 2) Load the latest stock snapshot per ticker. We pick the most
+    // recent trade_date that has any data for the requested tickers, then
+    // load only that day's rows so the report is point-in-time consistent.
+    const { data: latestDateRow } = await supabaseAdmin
+      .from("stock_daily_snapshots")
+      .select("trade_date")
+      .in("ticker", tickers)
+      .order("trade_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const marketDataAsOf = latestDateRow?.trade_date ?? null;
+
+    let snapshotRows: Array<Record<string, unknown>> = [];
+    if (marketDataAsOf) {
+      const { data: rows, error: sErr } = await supabaseAdmin
+        .from("stock_daily_snapshots")
+        .select("*")
+        .eq("trade_date", marketDataAsOf)
+        .in("ticker", tickers);
+      if (sErr) throw new Error(`Failed to load snapshots: ${sErr.message}`);
+      snapshotRows = (rows ?? []) as Array<Record<string, unknown>>;
     }
 
-    const enrichedMetrics = mergeFundamentals(tickers, metrics, supplemental);
+    const metrics: StockMetrics[] = snapshotRows.map(snapshotRowToStockMetrics);
 
+    // 3) Apply existing scoring engine — source of truth, untouched.
     const engineResult = runScoringEngine({
       constituents: trimmedConstituents,
-      metrics: enrichedMetrics,
+      metrics,
       filters: toFilterConfig(request),
       scoring: toScoringConfig(request),
     });
 
-    return buildReportFromEngine(request, engineResult);
+    const report = buildReportFromEngine(request, engineResult);
+
+    // 4) Annotate freshness + as-of dates.
+    const freshness = classifyFreshness(marketDataAsOf);
+    const latest = getLatestCompletedTradingDay();
+    const freshnessNote =
+      freshness === "missing"
+        ? marketDataAsOf
+          ? `Cached snapshot is from ${marketDataAsOf}; latest completed market close was ${latest}.`
+          : "No cached snapshot is available yet. The scheduled refresh has not produced data."
+        : freshness === "stale"
+          ? `Snapshot is from ${marketDataAsOf}; latest completed market close was ${latest}.`
+          : undefined;
+
+    return {
+      ...report,
+      marketDataAsOf: marketDataAsOf ?? undefined,
+      constituentsAsOf: constituentsAsOf ?? undefined,
+      freshness,
+      freshnessNote,
+    };
   });
 
-/**
- * Merge Finnhub primary metrics with Yahoo supplemental metrics.
- *
- * - Finnhub fields take precedence; Yahoo only fills `undefined` slots.
- * - When Finnhub returned nothing for a ticker but Yahoo did, we synthesize
- *   a Yahoo-only StockMetrics so the ticker can still be screened on the
- *   core fields (price + market cap + 52W context).
- * - Tickers are matched after symbol normalization (BRK.B → BRK-B) so the
- *   index list, both providers, and the engine all key consistently.
- */
-function mergeFundamentals(
-  requestedTickers: string[],
-  finnhub: StockMetrics[],
-  yahoo: YahooSupplementalMetrics[],
-): StockMetrics[] {
-  const finnhubByTicker = new Map<string, StockMetrics>(
-    finnhub.map((m) => [normalizeTickerForProvider(m.ticker), m]),
-  );
-  const yahooByTicker = new Map<string, YahooSupplementalMetrics>(
-    yahoo.map((m) => [normalizeTickerForProvider(m.ticker), m]),
-  );
+function n(v: unknown): number | undefined {
+  if (v == null) return undefined;
+  const x = typeof v === "string" ? Number(v) : (v as number);
+  return typeof x === "number" && Number.isFinite(x) ? x : undefined;
+}
 
-  const merged: StockMetrics[] = [];
-  const seen = new Set<string>();
-
-  for (const rawTicker of requestedTickers) {
-    const ticker = normalizeTickerForProvider(rawTicker);
-    if (seen.has(ticker)) continue;
-    seen.add(ticker);
-
-    const fh = finnhubByTicker.get(ticker);
-    const yh = yahooByTicker.get(ticker);
-
-    if (!fh && !yh) continue; // both providers failed → engine will mark MISSING_METRICS
-
-    if (fh && yh) {
-      merged.push({
-        ...fh,
-        ticker,
-        marketCapB: fh.marketCapB ?? yh.marketCapB,
-        currentPrice: fh.currentPrice ?? yh.currentPrice,
-        high52Week: fh.high52Week ?? yh.high52Week,
-        low52Week: fh.low52Week ?? yh.low52Week,
-        pricePctFrom52WHigh: fh.pricePctFrom52WHigh ?? yh.pricePctFrom52WHigh,
-        above200dma: fh.above200dma ?? yh.above200dma,
-        evToEbitda: fh.evToEbitda ?? yh.evToEbitda,
-        freeCashFlowB: fh.freeCashFlowB ?? yh.freeCashFlowB,
-        forwardPE: fh.forwardPE ?? yh.forwardPE,
-        trailingPE: fh.trailingPE ?? yh.trailingPE,
-        priceToBook: fh.priceToBook ?? yh.priceToBook,
-        revenueGrowthPct: fh.revenueGrowthPct ?? yh.revenueGrowthPct,
-        earningsGrowthPct: fh.earningsGrowthPct ?? yh.earningsGrowthPct,
-        operatingMarginPct: fh.operatingMarginPct ?? yh.operatingMarginPct,
-        grossMarginPct: fh.grossMarginPct ?? yh.grossMarginPct,
-        returnOnEquityPct: fh.returnOnEquityPct ?? yh.returnOnEquityPct,
-        debtToEquity: fh.debtToEquity ?? yh.debtToEquity,
-        beta: fh.beta ?? yh.beta,
-      });
-      continue;
-    }
-
-    if (fh) {
-      merged.push({ ...fh, ticker });
-      continue;
-    }
-
-    // Yahoo-only fallback when Finnhub returned nothing.
-    merged.push({
-      ticker,
-      marketCapB: yh!.marketCapB,
-      currentPrice: yh!.currentPrice,
-      high52Week: yh!.high52Week,
-      low52Week: yh!.low52Week,
-      pricePctFrom52WHigh: yh!.pricePctFrom52WHigh,
-      above200dma: yh!.above200dma,
-      evToEbitda: yh!.evToEbitda,
-      freeCashFlowB: yh!.freeCashFlowB,
-      forwardPE: yh!.forwardPE,
-      trailingPE: yh!.trailingPE,
-      priceToBook: yh!.priceToBook,
-      revenueGrowthPct: yh!.revenueGrowthPct,
-      earningsGrowthPct: yh!.earningsGrowthPct,
-      operatingMarginPct: yh!.operatingMarginPct,
-      grossMarginPct: yh!.grossMarginPct,
-      returnOnEquityPct: yh!.returnOnEquityPct,
-      debtToEquity: yh!.debtToEquity,
-      beta: yh!.beta,
-    });
-  }
-
-  return merged;
+function snapshotRowToStockMetrics(row: Record<string, unknown>): StockMetrics {
+  const ticker = normalizeTickerForProvider(String(row.ticker));
+  const currentPrice = n(row.close_price);
+  const high52Week = n(row.fifty_two_week_high);
+  const low52Week = n(row.fifty_two_week_low);
+  const twoHundredDma = n(row.two_hundred_day_moving_average);
+  return {
+    ticker,
+    marketCapB: n(row.market_cap_b),
+    currentPrice,
+    high52Week,
+    low52Week,
+    pricePctFrom52WHigh:
+      currentPrice != null && high52Week != null && high52Week > 0
+        ? ((currentPrice - high52Week) / high52Week) * 100
+        : undefined,
+    above200dma:
+      currentPrice != null && twoHundredDma != null
+        ? currentPrice >= twoHundredDma
+        : undefined,
+    forwardPE: n(row.forward_pe),
+    trailingPE: n(row.trailing_pe),
+    evToEbitda: n(row.ev_to_ebitda),
+    priceToBook: n(row.price_to_book),
+    revenueGrowthPct: n(row.revenue_growth),
+    earningsGrowthPct: n(row.earnings_growth),
+    operatingMarginPct: n(row.operating_margin),
+    grossMarginPct: n(row.gross_margin),
+    returnOnEquityPct: n(row.return_on_equity),
+    freeCashFlowB: n(row.free_cash_flow_b),
+    debtToEquity: n(row.debt_to_equity),
+    beta: n(row.beta),
+  };
 }
 
 function toFilterConfig(request: AnalysisRequest): FilterConfig {

@@ -108,6 +108,14 @@ export interface AnalysisReport {
   summary: AnalysisSummary;
   ranked: RankedCandidate[];
   rejected: RejectedCandidate[];
+  /** Trade date (YYYY-MM-DD) of the stock snapshots used. */
+  marketDataAsOf?: string;
+  /** as_of_date of the active constituent set used. */
+  constituentsAsOf?: string;
+  /** Freshness vs the latest completed US trading session. */
+  freshness?: "fresh" | "stale" | "missing";
+  /** Human-readable note when data is stale or missing. */
+  freshnessNote?: string;
 }
 
 export type AnalysisStatus = "idle" | "running" | "success" | "error";
