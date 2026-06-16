@@ -1,0 +1,165 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  bootstrapInitialMarketData,
+  triggerRefreshConstituents,
+  triggerRefreshSnapshots,
+  getBootstrapStatus,
+} from "@/lib/admin/bootstrap.functions";
+
+export const Route = createFileRoute("/admin/data-bootstrap")({
+  component: AdminBootstrapPage,
+});
+
+function AdminBootstrapPage() {
+  const [adminSecret, setAdminSecret] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [status, setStatus] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [lastResult, setLastResult] = useState<any>(null);
+
+  const fetchStatus = useServerFn(getBootstrapStatus);
+  const runBootstrap = useServerFn(bootstrapInitialMarketData);
+  const runRefreshC = useServerFn(triggerRefreshConstituents);
+  const runRefreshS = useServerFn(triggerRefreshSnapshots);
+
+  async function loadStatus() {
+    setError(null);
+    try {
+      const s = await fetchStatus({ data: { adminSecret } });
+      setStatus(s);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  useEffect(() => {
+    loadStatus().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function withBusy(label: string, fn: () => Promise<any>) {
+    setBusy(label);
+    setError(null);
+    try {
+      const r = await fn();
+      setLastResult({ label, r });
+      await loadStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="page-container py-10 space-y-6">
+      <header>
+        <h1 className="text-3xl font-semibold tracking-tight">Data bootstrap</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Admin-only controls for seeding and refreshing index constituents and end-of-day stock snapshots.
+        </p>
+      </header>
+
+      <Card className="p-4 space-y-3">
+        <label className="text-sm font-medium">Admin secret</label>
+        <Input
+          type="password"
+          value={adminSecret}
+          onChange={(e) => setAdminSecret(e.target.value)}
+          placeholder="Leave empty in dev. Required when ADMIN_BOOTSTRAP_SECRET is set."
+        />
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={loadStatus}>Reload status</Button>
+        </div>
+      </Card>
+
+      {error && (
+        <Card className="p-4 border-destructive">
+          <p className="text-sm text-destructive">{error}</p>
+        </Card>
+      )}
+
+      <Card className="p-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Stat label="Supported indexes" value={status?.supportedIndexes?.length ?? "—"} />
+        <Stat label="Active constituents" value={status?.activeConstituents ?? "—"} />
+        <Stat label="Unique tickers" value={status?.uniqueTickers ?? "—"} />
+        <Stat label="Latest trade_date" value={status?.latestTradeDate ?? "—"} />
+        <Stat label="Avg data completeness" value={status?.avgCompletenessPct != null ? `${status.avgCompletenessPct}%` : "—"} />
+        <Stat
+          label="Last bootstrap"
+          value={
+            status?.lastBootstrap?.completed_at
+              ? new Date(status.lastBootstrap.completed_at).toLocaleString()
+              : "Never"
+          }
+        />
+        <Stat label="Last status" value={status?.lastBootstrap?.status ?? "—"} />
+        <Stat label="Failed records" value={status?.lastBootstrap?.records_failed ?? "—"} />
+      </Card>
+
+      {status?.indexCounts && (
+        <Card className="p-4">
+          <p className="text-sm font-medium mb-2">Constituents per index</p>
+          <div className="flex gap-2 flex-wrap">
+            {Object.entries(status.indexCounts).map(([sym, n]) => (
+              <Badge key={sym} variant="secondary">{sym}: {String(n)}</Badge>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <Card className="p-4 space-y-2">
+        <p className="text-sm font-medium">Actions</p>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            disabled={!!busy}
+            onClick={() => withBusy("bootstrap", () => runBootstrap({ data: { adminSecret } }))}
+          >
+            {busy === "bootstrap" ? "Running…" : "Run initial data bootstrap"}
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={!!busy}
+            onClick={() => withBusy("constituents", () => runRefreshC({ data: { adminSecret } }))}
+          >
+            {busy === "constituents" ? "Running…" : "Refresh index constituents"}
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={!!busy}
+            onClick={() => withBusy("snapshots", () => runRefreshS({ data: { adminSecret } }))}
+          >
+            {busy === "snapshots" ? "Running…" : "Refresh stock snapshots"}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          End-of-day snapshots only. This app is a long-term research tool, not an intraday trader.
+        </p>
+      </Card>
+
+      {lastResult && (
+        <Card className="p-4">
+          <p className="text-sm font-medium mb-2">Last run: {lastResult.label}</p>
+          <pre className="text-xs overflow-auto max-h-96 bg-muted p-2 rounded">
+            {JSON.stringify(lastResult.r, null, 2)}
+          </pre>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: any }) {
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-lg font-semibold mt-1">{String(value)}</p>
+    </div>
+  );
+}

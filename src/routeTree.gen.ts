@@ -13,6 +13,7 @@ import { Route as ResultsRouteImport } from './routes/results'
 import { Route as MethodologyRouteImport } from './routes/methodology'
 import { Route as AnalyzeRouteImport } from './routes/analyze'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminDataBootstrapRouteImport } from './routes/admin/data-bootstrap'
 import { Route as ApiPublicHooksRefreshStockSnapshotsRouteImport } from './routes/api/public/hooks/refresh-stock-snapshots'
 import { Route as ApiPublicHooksRefreshIndexConstituentsRouteImport } from './routes/api/public/hooks/refresh-index-constituents'
 
@@ -36,6 +37,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminDataBootstrapRoute = AdminDataBootstrapRouteImport.update({
+  id: '/admin/data-bootstrap',
+  path: '/admin/data-bootstrap',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksRefreshStockSnapshotsRoute =
   ApiPublicHooksRefreshStockSnapshotsRouteImport.update({
     id: '/api/public/hooks/refresh-stock-snapshots',
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/analyze': typeof AnalyzeRoute
   '/methodology': typeof MethodologyRoute
   '/results': typeof ResultsRoute
+  '/admin/data-bootstrap': typeof AdminDataBootstrapRoute
   '/api/public/hooks/refresh-index-constituents': typeof ApiPublicHooksRefreshIndexConstituentsRoute
   '/api/public/hooks/refresh-stock-snapshots': typeof ApiPublicHooksRefreshStockSnapshotsRoute
 }
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/analyze': typeof AnalyzeRoute
   '/methodology': typeof MethodologyRoute
   '/results': typeof ResultsRoute
+  '/admin/data-bootstrap': typeof AdminDataBootstrapRoute
   '/api/public/hooks/refresh-index-constituents': typeof ApiPublicHooksRefreshIndexConstituentsRoute
   '/api/public/hooks/refresh-stock-snapshots': typeof ApiPublicHooksRefreshStockSnapshotsRoute
 }
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/analyze': typeof AnalyzeRoute
   '/methodology': typeof MethodologyRoute
   '/results': typeof ResultsRoute
+  '/admin/data-bootstrap': typeof AdminDataBootstrapRoute
   '/api/public/hooks/refresh-index-constituents': typeof ApiPublicHooksRefreshIndexConstituentsRoute
   '/api/public/hooks/refresh-stock-snapshots': typeof ApiPublicHooksRefreshStockSnapshotsRoute
 }
@@ -81,6 +90,7 @@ export interface FileRouteTypes {
     | '/analyze'
     | '/methodology'
     | '/results'
+    | '/admin/data-bootstrap'
     | '/api/public/hooks/refresh-index-constituents'
     | '/api/public/hooks/refresh-stock-snapshots'
   fileRoutesByTo: FileRoutesByTo
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/analyze'
     | '/methodology'
     | '/results'
+    | '/admin/data-bootstrap'
     | '/api/public/hooks/refresh-index-constituents'
     | '/api/public/hooks/refresh-stock-snapshots'
   id:
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/analyze'
     | '/methodology'
     | '/results'
+    | '/admin/data-bootstrap'
     | '/api/public/hooks/refresh-index-constituents'
     | '/api/public/hooks/refresh-stock-snapshots'
   fileRoutesById: FileRoutesById
@@ -106,6 +118,7 @@ export interface RootRouteChildren {
   AnalyzeRoute: typeof AnalyzeRoute
   MethodologyRoute: typeof MethodologyRoute
   ResultsRoute: typeof ResultsRoute
+  AdminDataBootstrapRoute: typeof AdminDataBootstrapRoute
   ApiPublicHooksRefreshIndexConstituentsRoute: typeof ApiPublicHooksRefreshIndexConstituentsRoute
   ApiPublicHooksRefreshStockSnapshotsRoute: typeof ApiPublicHooksRefreshStockSnapshotsRoute
 }
@@ -140,6 +153,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/data-bootstrap': {
+      id: '/admin/data-bootstrap'
+      path: '/admin/data-bootstrap'
+      fullPath: '/admin/data-bootstrap'
+      preLoaderRoute: typeof AdminDataBootstrapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/refresh-stock-snapshots': {
       id: '/api/public/hooks/refresh-stock-snapshots'
       path: '/api/public/hooks/refresh-stock-snapshots'
@@ -162,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyzeRoute: AnalyzeRoute,
   MethodologyRoute: MethodologyRoute,
   ResultsRoute: ResultsRoute,
+  AdminDataBootstrapRoute: AdminDataBootstrapRoute,
   ApiPublicHooksRefreshIndexConstituentsRoute:
     ApiPublicHooksRefreshIndexConstituentsRoute,
   ApiPublicHooksRefreshStockSnapshotsRoute:
