@@ -6,13 +6,12 @@ import { getLatestCompletedTradingDay } from "@/lib/marketCalendar";
 import { supportedIndexes, SUPPORTED_INDEX_SYMBOLS } from "@/lib/supportedIndexes";
 import { serializeError } from "@/lib/admin/serializeError";
 import { SPY_SEED_LIST } from "@/lib/admin/spySeed";
-import {
-  fetchDailyCandleSnapshot,
-  fetchFundamentalsRow,
-} from "@/services/finnhubCandles";
+import { fetchDailyCandleSnapshot } from "@/services/yahooChart";
+import { fetchFundamentalsRow } from "@/services/finnhubCandles";
 
 const MAX_TICKERS_PER_INDEX = 60;
-const QUEUE_BATCH_SIZE = 10;
+const QUEUE_BATCH_SIZE = 5;
+const STALE_IN_PROGRESS_MS = 5 * 60 * 1000;
 
 const SNAPSHOT_TRACKED_FIELDS = [
   "close_price",
@@ -202,10 +201,19 @@ async function processQueueOnce(): Promise<{
 }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const apiKey = process.env.FINNHUB_API_KEY ?? "";
-  if (!apiKey) throw new Error("FINNHUB_API_KEY is required.");
+  if (!apiKey) throw new Error("FINNHUB_API_KEY is required (used for fundamentals).");
 
   const nowISO = new Date().toISOString();
   const tradeDate = getLatestCompletedTradingDay();
+
+  // Re-queue any rows stuck in_progress for more than 5 minutes (worker crash,
+  // timeout, etc.). Keeps the pipeline self-healing.
+  const staleCutoff = new Date(Date.now() - STALE_IN_PROGRESS_MS).toISOString();
+  await supabaseAdmin
+    .from("bootstrap_ticker_queue")
+    .update({ status: "pending", next_retry_at: null })
+    .eq("status", "in_progress")
+    .lt("updated_at", staleCutoff);
 
   const { data: pending, error: pErr } = await supabaseAdmin
     .from("bootstrap_ticker_queue")
@@ -271,8 +279,8 @@ async function processQueueOnce(): Promise<{
         beta: fundamentals.beta,
         sector: null,
         industry: null,
-        provider_primary: "finnhub",
-        provider_secondary: "",
+        provider_primary: "yahoo",
+        provider_secondary: "finnhub",
         data_completeness_pct: computeCompleteness({
           close_price: candle.closePrice,
           fifty_two_week_high: candle.fiftyTwoWeekHigh,

@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminDataBootstrapRouteImport } from './routes/admin/data-bootstrap'
 import { Route as ApiPublicHooksRefreshStockSnapshotsRouteImport } from './routes/api/public/hooks/refresh-stock-snapshots'
 import { Route as ApiPublicHooksRefreshIndexConstituentsRouteImport } from './routes/api/public/hooks/refresh-index-constituents'
+import { Route as ApiPublicHooksProcessBootstrapQueueRouteImport } from './routes/api/public/hooks/process-bootstrap-queue'
 
 const ResultsRoute = ResultsRouteImport.update({
   id: '/results',
@@ -54,6 +55,12 @@ const ApiPublicHooksRefreshIndexConstituentsRoute =
     path: '/api/public/hooks/refresh-index-constituents',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksProcessBootstrapQueueRoute =
+  ApiPublicHooksProcessBootstrapQueueRouteImport.update({
+    id: '/api/public/hooks/process-bootstrap-queue',
+    path: '/api/public/hooks/process-bootstrap-queue',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/methodology': typeof MethodologyRoute
   '/results': typeof ResultsRoute
   '/admin/data-bootstrap': typeof AdminDataBootstrapRoute
+  '/api/public/hooks/process-bootstrap-queue': typeof ApiPublicHooksProcessBootstrapQueueRoute
   '/api/public/hooks/refresh-index-constituents': typeof ApiPublicHooksRefreshIndexConstituentsRoute
   '/api/public/hooks/refresh-stock-snapshots': typeof ApiPublicHooksRefreshStockSnapshotsRoute
 }
@@ -70,6 +78,7 @@ export interface FileRoutesByTo {
   '/methodology': typeof MethodologyRoute
   '/results': typeof ResultsRoute
   '/admin/data-bootstrap': typeof AdminDataBootstrapRoute
+  '/api/public/hooks/process-bootstrap-queue': typeof ApiPublicHooksProcessBootstrapQueueRoute
   '/api/public/hooks/refresh-index-constituents': typeof ApiPublicHooksRefreshIndexConstituentsRoute
   '/api/public/hooks/refresh-stock-snapshots': typeof ApiPublicHooksRefreshStockSnapshotsRoute
 }
@@ -80,6 +89,7 @@ export interface FileRoutesById {
   '/methodology': typeof MethodologyRoute
   '/results': typeof ResultsRoute
   '/admin/data-bootstrap': typeof AdminDataBootstrapRoute
+  '/api/public/hooks/process-bootstrap-queue': typeof ApiPublicHooksProcessBootstrapQueueRoute
   '/api/public/hooks/refresh-index-constituents': typeof ApiPublicHooksRefreshIndexConstituentsRoute
   '/api/public/hooks/refresh-stock-snapshots': typeof ApiPublicHooksRefreshStockSnapshotsRoute
 }
@@ -91,6 +101,7 @@ export interface FileRouteTypes {
     | '/methodology'
     | '/results'
     | '/admin/data-bootstrap'
+    | '/api/public/hooks/process-bootstrap-queue'
     | '/api/public/hooks/refresh-index-constituents'
     | '/api/public/hooks/refresh-stock-snapshots'
   fileRoutesByTo: FileRoutesByTo
@@ -100,6 +111,7 @@ export interface FileRouteTypes {
     | '/methodology'
     | '/results'
     | '/admin/data-bootstrap'
+    | '/api/public/hooks/process-bootstrap-queue'
     | '/api/public/hooks/refresh-index-constituents'
     | '/api/public/hooks/refresh-stock-snapshots'
   id:
@@ -109,6 +121,7 @@ export interface FileRouteTypes {
     | '/methodology'
     | '/results'
     | '/admin/data-bootstrap'
+    | '/api/public/hooks/process-bootstrap-queue'
     | '/api/public/hooks/refresh-index-constituents'
     | '/api/public/hooks/refresh-stock-snapshots'
   fileRoutesById: FileRoutesById
@@ -119,6 +132,7 @@ export interface RootRouteChildren {
   MethodologyRoute: typeof MethodologyRoute
   ResultsRoute: typeof ResultsRoute
   AdminDataBootstrapRoute: typeof AdminDataBootstrapRoute
+  ApiPublicHooksProcessBootstrapQueueRoute: typeof ApiPublicHooksProcessBootstrapQueueRoute
   ApiPublicHooksRefreshIndexConstituentsRoute: typeof ApiPublicHooksRefreshIndexConstituentsRoute
   ApiPublicHooksRefreshStockSnapshotsRoute: typeof ApiPublicHooksRefreshStockSnapshotsRoute
 }
@@ -174,6 +188,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksRefreshIndexConstituentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/process-bootstrap-queue': {
+      id: '/api/public/hooks/process-bootstrap-queue'
+      path: '/api/public/hooks/process-bootstrap-queue'
+      fullPath: '/api/public/hooks/process-bootstrap-queue'
+      preLoaderRoute: typeof ApiPublicHooksProcessBootstrapQueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,6 +204,8 @@ const rootRouteChildren: RootRouteChildren = {
   MethodologyRoute: MethodologyRoute,
   ResultsRoute: ResultsRoute,
   AdminDataBootstrapRoute: AdminDataBootstrapRoute,
+  ApiPublicHooksProcessBootstrapQueueRoute:
+    ApiPublicHooksProcessBootstrapQueueRoute,
   ApiPublicHooksRefreshIndexConstituentsRoute:
     ApiPublicHooksRefreshIndexConstituentsRoute,
   ApiPublicHooksRefreshStockSnapshotsRoute:
@@ -191,12 +214,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
