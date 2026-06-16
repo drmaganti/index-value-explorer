@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      bootstrap_ticker_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          index_symbols: string[]
+          last_error: string | null
+          next_retry_at: string | null
+          status: string
+          ticker: string
+          trade_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          index_symbols?: string[]
+          last_error?: string | null
+          next_retry_at?: string | null
+          status?: string
+          ticker: string
+          trade_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          index_symbols?: string[]
+          last_error?: string | null
+          next_retry_at?: string | null
+          status?: string
+          ticker?: string
+          trade_date?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       index_constituents: {
         Row: {
           as_of_date: string
