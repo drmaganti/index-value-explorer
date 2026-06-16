@@ -142,7 +142,7 @@ export const runAnalysis = createServerFn({ method: "POST" })
 
     if (snapshotRows.length === 0) {
       throw new Error(
-        "Initial stock snapshots have not been loaded. Run data bootstrap first (Admin → Data bootstrap).",
+        "No end-of-day stock snapshots are available yet. Visit Admin → Data bootstrap and click 'Process next 10 tickers' until the pending count reaches zero.",
       );
     }
 
