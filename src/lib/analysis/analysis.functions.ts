@@ -11,6 +11,7 @@ import {
 } from "@/services";
 import { normalizeTickerForProvider } from "@/services/symbolNormalization";
 import { getLatestCompletedTradingDay, classifyFreshness } from "@/lib/marketCalendar";
+import { FinnhubIndexProvider } from "@/services";
 
 const analysisModeSchema = z.enum(["conservative", "balanced", "opportunistic"]);
 
@@ -39,7 +40,7 @@ export const runAnalysis = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // 1) Load latest active constituents for the selected index.
-    const { data: constituentRows, error: cErr } = await supabaseAdmin
+    let { data: constituentRows, error: cErr } = await supabaseAdmin
       .from("index_constituents")
       .select("ticker, company_name, sector, weight, as_of_date")
       .eq("index_symbol", request.symbol)
@@ -47,10 +48,54 @@ export const runAnalysis = createServerFn({ method: "POST" })
       .order("weight", { ascending: false });
 
     if (cErr) throw new Error(`Failed to load constituents: ${cErr.message}`);
+
+    // On-demand bootstrap: if the scheduled refresh hasn't populated this
+    // index yet, fetch live constituents now and persist them so subsequent
+    // runs hit the cache.
     if (!constituentRows || constituentRows.length === 0) {
-      throw new Error(
-        `No cached constituents for ${request.symbol}. The scheduled refresh has not run yet.`,
-      );
+      try {
+        const provider = new FinnhubIndexProvider(process.env.FINNHUB_API_KEY ?? "");
+        const live = await provider.getConstituents(request.symbol);
+        const todayISO = new Date().toISOString().slice(0, 10);
+        const providerName =
+          request.symbol === "SPY" || request.symbol === "QQQ" || request.symbol === "DIA"
+            ? "wikipedia"
+            : "finnhub";
+        const rows = live
+          .filter((c) => c.ticker && c.ticker.length > 0)
+          .map((c) => ({
+            index_symbol: request.symbol,
+            ticker: normalizeTickerForProvider(c.ticker),
+            company_name: c.name ?? null,
+            sector: c.sector ?? null,
+            weight: c.weight ?? null,
+            provider: providerName,
+            as_of_date: todayISO,
+            is_active: true,
+          }));
+        if (rows.length > 0) {
+          await supabaseAdmin
+            .from("index_constituents")
+            .upsert(rows, { onConflict: "index_symbol,ticker,as_of_date" });
+        }
+        constituentRows = rows.map((r) => ({
+          ticker: r.ticker,
+          company_name: r.company_name,
+          sector: r.sector,
+          weight: r.weight,
+          as_of_date: r.as_of_date,
+        }));
+      } catch (err) {
+        throw new Error(
+          `Constituent cache for ${request.symbol} is empty and live bootstrap failed: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+
+    if (!constituentRows || constituentRows.length === 0) {
+      throw new Error(`No constituents available for ${request.symbol}.`);
     }
 
     const constituentsAsOf = constituentRows[0]?.as_of_date ?? null;
