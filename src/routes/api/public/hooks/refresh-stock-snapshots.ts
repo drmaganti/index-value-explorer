@@ -154,15 +154,15 @@ export const Route = createFileRoute("/api/public/hooks/refresh-stock-snapshots"
               continue;
             }
             // Finnhub wins; Yahoo fills gaps.
-            const merged: Partial<StockMetrics> & { ticker: string } = { ticker };
+            const merged: Record<string, unknown> = { ticker };
             for (const f of TRACKED_FIELDS) {
-              const fv = fhRow?.[f];
-              const yv = yhRow?.[f as keyof YahooSupplementalMetrics];
-              // @ts-expect-error narrow union write
-              merged[f] = (fv ?? yv) as never;
+              const key = f as string;
+              const fv = (fhRow as unknown as Record<string, unknown> | undefined)?.[key];
+              const yv = (yhRow as unknown as Record<string, unknown> | undefined)?.[key];
+              merged[key] = fv ?? yv;
             }
-
-            const present = TRACKED_FIELDS.filter((f) => merged[f] != null).length;
+            const m = merged as Record<string, number | undefined>;
+            const present = TRACKED_FIELDS.filter((f) => merged[f as string] != null).length;
             const missing = TRACKED_FIELDS.length - present;
             const completeness = Math.round((present / TRACKED_FIELDS.length) * 100);
 
@@ -170,24 +170,24 @@ export const Route = createFileRoute("/api/public/hooks/refresh-stock-snapshots"
             snapshotRows.push({
               ticker,
               trade_date: tradeDate,
-              close_price: num(merged.currentPrice),
+              close_price: num(m.currentPrice),
               previous_close: null,
-              fifty_two_week_high: num(merged.high52Week),
-              fifty_two_week_low: num(merged.low52Week),
+              fifty_two_week_high: num(m.high52Week),
+              fifty_two_week_low: num(m.low52Week),
               two_hundred_day_moving_average: null,
-              market_cap_b: num(merged.marketCapB),
-              forward_pe: num(merged.forwardPE),
-              trailing_pe: num(merged.trailingPE),
-              ev_to_ebitda: num(merged.evToEbitda),
-              price_to_book: num(merged.priceToBook),
-              revenue_growth: num(merged.revenueGrowthPct),
-              earnings_growth: num(merged.earningsGrowthPct),
-              operating_margin: num(merged.operatingMarginPct),
-              gross_margin: num(merged.grossMarginPct),
-              return_on_equity: num(merged.returnOnEquityPct),
-              free_cash_flow_b: num(merged.freeCashFlowB),
-              debt_to_equity: num(merged.debtToEquity),
-              beta: num(merged.beta),
+              market_cap_b: num(m.marketCapB),
+              forward_pe: num(m.forwardPE),
+              trailing_pe: num(m.trailingPE),
+              ev_to_ebitda: num(m.evToEbitda),
+              price_to_book: num(m.priceToBook),
+              revenue_growth: num(m.revenueGrowthPct),
+              earnings_growth: num(m.earningsGrowthPct),
+              operating_margin: num(m.operatingMarginPct),
+              gross_margin: num(m.grossMarginPct),
+              return_on_equity: num(m.returnOnEquityPct),
+              free_cash_flow_b: num(m.freeCashFlowB),
+              debt_to_equity: num(m.debtToEquity),
+              beta: num(m.beta),
               sector: meta?.sector ?? null,
               industry: null,
               provider_primary: fhRow ? "finnhub" : "yahoo",
@@ -232,9 +232,8 @@ export const Route = createFileRoute("/api/public/hooks/refresh-stock-snapshots"
           { headers: { "Content-Type": "application/json" } },
         );
       },
-      GET: async ({ request }) => {
-        return Route.options.server!.handlers!.POST!({ request } as any);
-      },
+      GET: async () =>
+        new Response("Use POST to trigger refresh.", { status: 405 }),
     },
   },
 });
