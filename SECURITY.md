@@ -1,21 +1,19 @@
 # Security
 
-## Immediate repository issue
+## Environment-file remediation status
 
-This public repository currently contains a tracked `.env` file.
+A real `.env` file was previously tracked in this public repository. During the documentation/security pass, the current-tree file was removed **without reading or exposing its contents**, `.env`/`.env.*` were added to `.gitignore`, and a sanitized `.env.example` was added.
 
-The environment file's contents were **not inspected for this documentation pass**. Treat the file as potentially sensitive until reviewed.
+That fixes the current-tree hygiene issue but does **not** prove historical values were safe.
 
-Recommended remediation:
+Remaining required follow-up:
 
-1. identify whether any committed value is secret or privileged;
-2. rotate any credential that may have been exposed;
-3. remove `.env` from Git tracking;
-4. add a sanitized `.env.example` with variable names/placeholders only;
-5. verify `.gitignore` excludes real local environment files;
-6. assess Git history and rewrite it if sensitive values were committed previously.
+1. determine whether any previously committed value was secret or privileged;
+2. rotate/revoke any credential that may have been exposed;
+3. assess Git history and rewrite it if sensitive values must be removed;
+4. review provider/account logs where useful.
 
-A later deletion commit does not erase prior values from Git history.
+Deleting `.env` from the current tree does not erase prior versions from Git history.
 
 ## Supabase/client configuration
 
@@ -60,13 +58,12 @@ Security/reliability includes preventing misleading data:
 
 ## Incident response
 
-If a secret is discovered in the public repository:
+If a secret is discovered in repository history:
 
 1. rotate/revoke it first;
-2. remove the value from the current tree;
-3. assess/rewrite Git history if necessary;
-4. verify provider/account access logs where available;
-5. document the remediation;
-6. add a guardrail that prevents recurrence.
+2. assess/rewrite Git history if necessary;
+3. verify provider/account access logs where available;
+4. document the remediation;
+5. add or strengthen a guardrail that prevents recurrence.
 
 Do not paste exposed credential values into issues or remediation documentation.
