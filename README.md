@@ -103,19 +103,13 @@ The application expects Supabase configuration such as:
 - `VITE_SUPABASE_URL` / `SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_PUBLISHABLE_KEY`
 
-### Security warning
+Copy `.env.example` to a local `.env` and fill values outside source control.
 
-This **public repository currently contains a tracked `.env` file**. Its contents were not required or inspected for this documentation pass. Treat that as a security-hygiene blocker until the file and Git history are reviewed.
+### Security status
 
-Before relying on this repository publicly:
+A real `.env` was previously tracked in this public repository. The current-tree file has now been removed without inspecting or exposing its contents; environment files are ignored and a sanitized `.env.example` is committed.
 
-1. rotate any credential that may have been committed;
-2. remove `.env` from tracking;
-3. add a sanitized `.env.example` containing variable names only;
-4. confirm `.gitignore` excludes real environment files;
-5. rewrite Git history if sensitive values were ever committed.
-
-See [`SECURITY.md`](./SECURITY.md).
+Historical exposure is **not yet cleared**: any previously committed secret should be rotated and Git history reviewed/re-written if required. See [`SECURITY.md`](./SECURITY.md).
 
 ## Repository structure
 
@@ -139,4 +133,4 @@ tests/                       automated-test area
 
 ## Current status
 
-**Functional research application / pre-production methodology.** The product has a clear deterministic screening workflow, but the score weights/bounds should be calibrated against point-in-time historical data before being described as predictive. Security hygiene, repeatable tests/CI, and data-provider production assumptions should also be resolved before broader production use.
+**Functional research application / pre-production methodology.** The product has a clear deterministic screening workflow, but the score weights/bounds should be calibrated against point-in-time historical data before being described as predictive. Historical environment-file exposure, repeatable tests/CI, and data-provider production assumptions should also be resolved before broader production use.
